@@ -147,7 +147,7 @@ def is_email_valid(email):
     email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(email_regex, email) is not None
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer("paraphrase-MiniLM-L3-v2")
 spell = SpellChecker()
 COMMON_TECH_TERMS = {'js', 'dev', 'github', 'linkedin', 'firebase', 'wireframe', 'wireframes', 'signups', 'efficiency'}
 spell.word_frequency.load_words(COMMON_TECH_TERMS)
