@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8 p-4 sm:p-6 md:p-8">
+    <header class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="flex-grow">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-200">{{ interview.title }}</h1>
+            <p class="text-gray-400 mt-2 whitespace-pre-wrap text-sm sm:text-base">{{ interview.description }}</p>
+        </div>
+        <!-- New: Complete Interview Details button moved to center -->
+        <div class="flex-shrink-0 w-full md:w-auto flex justify-center">
+            <button id="complete-interview-details-btn" class="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-500 transition w-full md:w-auto">Complete Interview Details</button>
+        </div>
+        <!-- Publish/Recollect Buttons -->
+        <div class="flex-shrink-0 w-full md:w-auto flex justify-center space-x-2">
+            {% if interview.results_published %}
+                <form action="{{ url_for('publish_results', interview_id=interview.id) }}" method="POST">
+                    <input type="hidden" name="action" value="recollect">
+                    <button type="submit" class="px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-500 transition w-full md:w-auto">Recollect Results</button>
+                </form>
+            {% else %}
+                <button id="publish-btn" 
+                        class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-500 transition disabled:bg-gray-600 disabled:cursor-not-allowed w-full md:w-auto"
+                        {% if not interview_completed %}disabled title="Complete at least one interview to publish results"{% endif %}>
+                    Publish Results
+                </button>
+            {% endif %}
+        </div>
+    </header>
+    
+    <div id="js-data" data-has-waiting-list="{% if waiting_list_candidates|length > 0 %}true{% else %}false{% endif %}" data-interview-id="{{ interview.id }}" style="display: none;"></div>
+
+    <!-- Applicant Table -->
+    <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+        <h2 class="text-xl sm:text-2xl font-semibold text-purple-400 mb-4">Applicants ({{ applicants|length }})</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-700">
+                <thead class="bg-gray-800">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Candidate Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Score</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800">
+                    {% for applicant in applicants %}
+                    <tr class="hover:bg-gray-800 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">{{ applicant.candidate_username }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if applicant.status == 'Accepted' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-800/50 text-green-300">Accepted</span>
+                            {% elif applicant.status == 'Rejected' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-800/50 text-red-300">Rejected</span>
+                            {% elif applicant.status == 'Waiting List' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-800/50 text-yellow-300">Waiting List</span>
+                            {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-700 text-gray-300">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {% if applicant.score is not none %}
+                                <span class="flex items-center inline-block">
+                                    {{ "%.1f" | format(applicant.score) }}%
+                                </span>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="{{ url_for('live_interview', interview_id=interview.id, candidate_username=applicant.candidate_username) }}" 
+                               class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-500 transition">
+                                {% if applicant.status == 'Applied' %}Start Interview{% else %}Review Decision{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Modal for Waiting List Confirmation -->
+<div id="waiting-list-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-[#161b22] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg p-6 m-4 text-center">
+        <h2 class="text-2xl font-bold text-yellow-400 mb-4">Waiting List Candidates</h2>
+        <p class="text-gray-400 mb-6">You have candidates on the waiting list. Publishing results now will reject them. How do you want to proceed?</p>
+        <div class="mb-4 text-left">
+            <p class="font-semibold text-gray-300">Candidates on Waiting List:</p>
+            <ul class="list-disc list-inside text-gray-400">
+                {% for wl_candidate in waiting_list_candidates %}
+                    <li>{{ wl_candidate.candidate_username }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="mt-6 flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <button type="button" id="review-waiting-list-btn" class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold w-full sm:w-auto">Review Waiting List</button>
+            <form action="{{ url_for('publish_results', interview_id=interview.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to reject all waiting list candidates and publish results? This action cannot be undone.');">
+                <input type="hidden" name="action" value="reject_waiting_list">
+                <button type="submit" class="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold w-full sm:w-auto">Reject All & Publish</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- New: Complete Interview Details Modal -->
+<div id="complete-details-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-[#161b22] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-3xl p-8 m-4 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl sm:text-2xl font-bold text-purple-400 mb-6">Interview Summary</h2>
+
+        <div class="mb-6 border-b border-gray-700">
+            <nav class="flex flex-wrap space-x-2 sm:space-x-4" role="tablist">
+                <button type="button" id="tab-accepted" role="tab" aria-controls="accepted-candidates" aria-selected="true"
+                        class="tab-button px-3 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent hover:border-gray-300 focus:outline-none focus:border-blue-500 active-tab w-full sm:w-auto mb-2 sm:mb-0"
+                        data-target="accepted-candidates-content">Accepted Candidates</button>
+                <button type="button" id="tab-waiting-list" role="tab" aria-controls="waiting-list-candidates" aria-selected="false"
+                        class="tab-button px-3 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent hover:border-gray-300 focus:outline-none focus:border-blue-500 w-full sm:w-auto mb-2 sm:mb-0"
+                        data-target="waiting-list-candidates-content">Waiting List Candidates</button>
+                <button type="button" id="tab-rejected" role="tab" aria-controls="rejected-candidates" aria-selected="false"
+                        class="tab-button px-3 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent hover:border-gray-300 focus:outline-none focus:border-blue-500 w-full sm:w-auto mb-2 sm:mb-0"
+                        data-target="rejected-candidates-content">Rejected Candidates</button>
+            </nav>
+        </div>
+
+        <div id="tab-content" class="space-y-4">
+            <div id="accepted-candidates-content" role="tabpanel" aria-labelledby="tab-accepted" class="tab-pane">
+                <div id="accepted-candidates-list" class="space-y-4"></div>
+            </div>
+            <div id="waiting-list-candidates-content" role="tabpanel" aria-labelledby="tab-waiting-list" class="tab-pane hidden">
+                <div id="waiting-list-candidates-list" class="space-y-4"></div>
+            </div>
+            <div id="rejected-candidates-content" role="tabpanel" aria-labelledby="tab-rejected" class="tab-pane hidden">
+                <div id="rejected-candidates-list" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-right">
+            <button id="close-details-modal-btn" class="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white font-semibold">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const publishBtn = document.getElementById('publish-btn');
+    const waitingListModal = document.getElementById('waiting-list-modal');
+    const reviewWaitingListBtn = document.getElementById('review-waiting-list-btn');
+    const completeInterviewDetailsBtn = document.getElementById('complete-interview-details-btn');
+    const completeDetailsModal = document.getElementById('complete-details-modal');
+    const closeDetailsModalBtn = document.getElementById('close-details-modal-btn');
+    
+    // Get hasWaitingList from data attribute
+    const jsDataElement = document.getElementById('js-data');
+    const hasWaitingList = jsDataElement.dataset.hasWaitingList === 'true';
+
+    // Embed applicants data directly into a JavaScript variable
+    const allApplicants = JSON.parse('{{ applicants | tojson | safe }}');
+    const currentInterviewId = jsDataElement.dataset.interviewId;
+
+    const renderCandidateList = (containerId, candidates) => {
+        const container = document.getElementById(containerId);
+        container.innerHTML = ''; // Clear previous content
+
+        if (candidates.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 italic">No candidates in this category.</p>';
+            return;
+        }
+
+        // Sort candidates by score (highest first)
+        candidates.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        candidates.forEach(applicant => {
+            const card = document.createElement('div');
+            card.className = 'bg-[#0d1117] border border-gray-700 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0';
+            
+            const reviewUrl = `{{ url_for('live_interview', interview_id=0, candidate_username='TEMP_USERNAME') }}`.replace('0', currentInterviewId).replace('TEMP_USERNAME', applicant.candidate_username);
+
+            card.innerHTML = `
+                <div>
+                    <p class="text-gray-200 font-medium">${applicant.candidate_username}</p>
+                    <p class="text-gray-400 text-sm">Score: ${applicant.score !== null ? applicant.score.toFixed(1) + '%' : 'N/A'}</p>
+                </div>
+                <a href="${reviewUrl}"
+                   class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-500 transition w-full sm:w-auto">
+                    Review Decision
+                </a>
+            `;
+            container.appendChild(card);
+        });
+    };
+
+    if (publishBtn) {
+        publishBtn.addEventListener('click', () => {
+            if (hasWaitingList) {
+                waitingListModal.classList.remove('hidden');
+            } else {
+                // If no waiting list, submit a standard publish form
+                if (confirm('Are you sure you want to publish results? This action cannot be undone.')) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = "{{ url_for('publish_results', interview_id=interview.id) }}";
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'action';
+                    input.value = 'publish';
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            }
+        });
+    }
+
+    if (reviewWaitingListBtn) {
+        // For now, this button just closes the modal
+        reviewWaitingListBtn.addEventListener('click', () => {
+            waitingListModal.classList.add('hidden');
+        });
+    }
+
+    if (completeInterviewDetailsBtn) {
+        completeInterviewDetailsBtn.addEventListener('click', () => {
+            // Filter candidates by status
+            const acceptedCandidates = allApplicants.filter(app => app.status === 'Accepted');
+            const waitingListCandidates = allApplicants.filter(app => app.status === 'Waiting List');
+            const rejectedCandidates = allApplicants.filter(app => app.status === 'Rejected');
+
+            // Render lists in the modal
+            renderCandidateList('accepted-candidates-list', acceptedCandidates);
+            renderCandidateList('waiting-list-candidates-list', waitingListCandidates);
+            renderCandidateList('rejected-candidates-list', rejectedCandidates);
+
+            completeDetailsModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeDetailsModalBtn) {
+        closeDetailsModalBtn.addEventListener('click', () => {
+            completeDetailsModal.classList.add('hidden');
+        });
+    }
+
+    // Tab switching logic
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+
+    const activateTab = (selectedTab) => {
+        tabButtons.forEach(button => {
+            button.classList.remove('active-tab', 'border-blue-500');
+            button.classList.add('border-transparent');
+            button.setAttribute('aria-selected', 'false');
+        });
+
+        selectedTab.classList.add('active-tab', 'border-blue-500');
+        selectedTab.classList.remove('border-transparent');
+        selectedTab.setAttribute('aria-selected', 'true');
+
+        tabPanes.forEach(pane => {
+            pane.classList.add('hidden');
+        });
+
+        const targetId = selectedTab.dataset.target;
+        document.getElementById(targetId).classList.remove('hidden');
+    };
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+            activateTab(event.currentTarget);
+        });
+    });
+
+    // Initial tab activation
+    const initialTab = document.getElementById('tab-accepted');
+    if (initialTab) {
+        activateTab(initialTab);
+    }
+});
+</script>
+{% endblock %}
+

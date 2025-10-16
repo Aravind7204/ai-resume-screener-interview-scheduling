@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-[60vh] flex flex-col items-center justify-center bg-gray-900">
+    <div class="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-2xl shadow-2xl p-8">
+
+        <!-- Tab Buttons -->
+        <div class="flex flex-wrap border-b border-gray-700 mb-6">
+            <button id="hrTab" class="tab-button flex-1 py-3 text-lg font-semibold transition-colors duration-300 focus:outline-none" onclick="switchTab('hr')">
+                HR Login
+            </button>
+            <button id="candidateTab" class="tab-button flex-1 py-3 text-lg font-semibold transition-colors duration-300 focus:outline-none" onclick="switchTab('candidate')">
+                Candidate Login
+            </button>
+        </div>
+
+        <!-- HR Login Form -->
+        <div id="hrForm" class="tab-content space-y-6">
+            <h2 class="text-3xl font-bold text-center text-gray-200">HR Portal Access</h2>
+            <form action="{{ url_for('login_hr') }}" method="POST" class="space-y-6" autocomplete="off">
+                <div>
+                    <label for="hr_email" class="block text-sm font-medium text-gray-400">Email Address</label>
+                    <input type="email" name="email" id="hr_email" required autocomplete="email"
+                           class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="hr@example.com">
+                </div>
+                <div>
+                    <label for="hr_password" class="block text-sm font-medium text-gray-400">Password</label>
+                    <input type="password" name="password" id="hr_password" required autocomplete="current-password"
+                           class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="••••••••">
+                    <div class="text-right mt-2">
+                        <a href="{{ url_for('forgot_password', role='hr') }}" class="text-sm font-medium text-blue-400 hover:text-blue-300">Forgot Password?</a>
+                    </div>
+                </div>
+                <button type="submit"
+                        class="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-lg shadow-lg transition">
+                    Login as HR
+                </button>
+            </form>
+            <div class="text-center mt-6">
+                <p class="text-sm text-gray-400">
+                    Don't have an HR account?
+                    <a href="{{ url_for('register', role='hr') }}" class="font-medium text-blue-400 hover:text-blue-300">
+                        Register here
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Candidate Login Form -->
+        <div id="candidateForm" class="tab-content hidden space-y-6">
+            <h2 class="text-3xl font-bold text-center text-gray-200">Candidate Portal</h2>
+            <form action="{{ url_for('login_candidate') }}" method="POST" class="space-y-6" autocomplete="off">
+                <div>
+                    <label for="candidate_email" class="block text-sm font-medium text-gray-400">Email Address</label>
+                    <input type="email" name="email" id="candidate_email" required autocomplete="email"
+                           class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="candidate@example.com">
+                </div>
+                <div>
+                    <label for="candidate_password" class="block text-sm font-medium text-gray-400">Password</label>
+                    <input type="password" name="password" id="candidate_password" required autocomplete="current-password"
+                           class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="••••••••">
+                    <div class="text-right mt-2">
+                        <a href="{{ url_for('forgot_password', role='candidate') }}" class="text-sm font-medium text-purple-400 hover:text-purple-300">Forgot Password?</a>
+                    </div>
+                </div>
+                <button type="submit"
+                        class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-lg shadow-lg transition">
+                    Login as Candidate
+                </button>
+            </form>
+            <div class="text-center mt-6">
+                <p class="text-sm text-gray-400">
+                    Don't have a Candidate account?
+                    <a href="{{ url_for('register', role='candidate') }}" class="font-medium text-blue-400 hover:text-blue-300">
+                        Register here
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        const hrTab = document.getElementById('hrTab');
+        const candidateTab = document.getElementById('candidateTab');
+        const hrForm = document.getElementById('hrForm');
+        const candidateForm = document.getElementById('candidateForm');
+
+        if (tab === 'hr') {
+            hrTab.classList.add('border-blue-500', 'text-blue-400');
+            hrTab.classList.remove('border-transparent', 'text-gray-500');
+            candidateTab.classList.add('border-transparent', 'text-gray-500');
+            candidateTab.classList.remove('border-purple-500', 'text-purple-400');
+            
+            hrForm.classList.remove('hidden');
+            candidateForm.classList.add('hidden');
+        } else {
+            candidateTab.classList.add('border-purple-500', 'text-purple-400');
+            candidateTab.classList.remove('border-transparent', 'text-gray-500');
+            hrTab.classList.add('border-transparent', 'text-gray-500');
+            hrTab.classList.remove('border-blue-500', 'text-blue-400');
+
+            candidateForm.classList.remove('hidden');
+            hrForm.classList.add('hidden');
+        }
+    }
+    
+    // This wrapper ensures the script runs after the page is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set the default tab to 'hr' on page load
+        switchTab('hr');
+    });
+</script>
+
+{% endblock %}
+

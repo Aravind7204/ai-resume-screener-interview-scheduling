@@ -1,0 +1,57 @@
+/*
+ * FIX: Disable text selection globally. 
+ * This prevents the annoying text-selection cursor/highlight 
+ * that appears when clicking on non-text elements (like buttons or tabs).
+ */
+body {
+    /* Standard properties to prevent user selection */
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE10+ */
+    user-select: none;         /* Standard */
+    
+    /* Ensure cursor is a standard arrow everywhere unless overridden */
+    cursor: default;           
+}
+
+/* * CRITICAL: Re-enable text selection for actual form elements
+ * so users can copy/paste/type in the input fields and text areas.
+ */
+input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    
+    /* Change cursor back to the standard text entry cursor */
+    cursor: auto; 
+}
+
+/* Add cursor: pointer to all elements that a user can click or hover over */
+
+/* 1. Standard clickable elements (links, buttons) */
+a, button {
+    cursor: pointer !important;
+}
+
+/* 2. Elements treated like buttons (your upload labels) */
+label[for], 
+.cursor-pointer, 
+.tab-button {
+    cursor: pointer !important;
+}
+
+/* 3. General interactive elements */
+[onclick], [role="button"] {
+    cursor: pointer !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.mainContainer {
+  margin-top: 0;
+  padding-top: 0;
+}

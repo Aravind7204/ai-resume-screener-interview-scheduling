@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-[#0d1117] text-gray-200 p-10">
+
+    <div class="grid md:grid-cols-2 gap-10 max-w-7xl mx-auto">
+
+        <div class="space-y-8 flex flex-col justify-between">
+            <div>
+                <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">
+                    AI Resume Analyzer
+                </h1>
+                <p class="text-gray-400 text-lg leading-relaxed mb-8" >
+                    Upload your resume and job description to instantly evaluate your <span class="text-blue-400 font-medium">ATS Score</span>.
+                    Discover missing keywords, enhance your resume, and boost your chances of getting shortlisted.
+                </p>
+                
+                <div class="flex justify-start ml-4">
+                    <img src="{{ url_for('static', filename='images/resume.png') }}"
+                        alt="Resume Illustration"
+                        class="rounded-xl shadow-2xl opacity-90 transition w-full max-w-sm 
+                                filter invert-0 brightness-90 contrast-125 grayscale">
+                </div>
+            </div>
+            
+            <div class="space-y-4 pt-10 mt-10 border-t border-gray-800">
+                <h2 class="text-2xl font-semibold text-purple-400">What do the scores mean?</h2>
+                <p class="text-gray-400 leading-relaxed text-sm mt-3" style="text-indent: 1.5em;">
+                    Our evaluation employs a balanced, two-pronged approach to assess your resume's job fitness. 
+                    Semantic Matching (weighted at 60%) measures the deep, conceptual alignment between your career history and the job's core responsibilities. Keyword Density (weighted at 40%) ensures technical compliance by counting the presence of exact skills and terms from the job description.
+                </p>
+                <p class="text-gray-400 leading-relaxed text-sm" style="text-indent: 1.5em;">
+                    A low score, such as your 35%, is a clear warning sign that requires immediate action. While your profile achieves a moderate conceptual fit, the resume currently suffers from a significant deficit in specific, high-value technical terms. It lacks the explicitly demanded keywords like PHP, MVC, and OOP, which are central to the role. To successfully pass the screening phase and reach a human reviewer, you must prioritize integrating these crucial terms. Navigate to the Keyword Density tab now to find the precise missing terms you need to add to your resume.
+                </p>
+            </div>
+
+
+            <div class="text-sm text-gray-400 border-t border-gray-800 pt-4 mt-8">
+                💼 <span class="text-purple-400 font-medium">Empower your career</span> — make your resume smarter with AI-driven insights.
+            </div>
+        </div>
+
+        <div class="space-y-8">
+
+            <form action="{{ url_for('analyzer') }}" method="POST" enctype="multipart/form-data"
+                  class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 shadow-2xl space-y-6">
+
+                <h2 class="text-2xl font-semibold text-blue-400 mb-4">Upload Details</h2>
+
+                <div>
+                    <label class="block mb-2 text-gray-300 font-medium">Resume File</label>
+                    <label class="flex items-center cursor-pointer bg-[#0d1117] border border-gray-700 rounded-xl px-4 py-2 hover:border-blue-500 shadow-sm transition w-full">
+                        <button type="button"
+                                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow transition mr-2"
+                                onclick="document.getElementById('resumeInput').click()">
+                            Upload
+                        </button>
+                        <span id="resumeName" class="text-gray-400 truncate ml-2">No file chosen</span>
+                        <input type="file" name="resume" id="resumeInput" accept=".pdf,.txt,.docx" class="hidden"
+                               onchange="updateFileName(this, 'resumeName')">
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block mb-2 text-gray-300 font-medium">Job Description</label>
+
+                    <textarea name="jobdesc_text" rows="4"
+                              class="w-full bg-[#0d1117] border border-gray-700 rounded-xl p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3 transition"
+                              placeholder="Paste the job description here..."></textarea>
+
+                    <div class="flex items-center justify-center my-3">
+                        <div class="h-px bg-gray-700 w-1/3"></div>
+                        <span class="text-gray-500 text-sm mx-3">or</span>
+                        <div class="h-px bg-gray-700 w-1/3"></div>
+                    </div>
+
+                    <label class="flex items-center cursor-pointer bg-[#0d1117] border border-gray-700 rounded-xl px-4 py-2 hover:border-purple-500 shadow-sm transition w-full">
+                        <button type="button"
+                                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow transition mr-2"
+                                onclick="document.getElementById('jobdescInput').click()">
+                            Upload
+                        </button>
+                        <span id="jdName" class="text-gray-400 truncate ml-2">No file chosen</span>
+                        <input type="file" name="jobdesc" id="jobdescInput" accept=".pdf,.txt,.docx" class="hidden"
+                               onchange="updateFileName(this, 'jdName')">
+                    </label>
+                </div>
+
+                <button type="submit"
+                        class="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg transition">
+                    Analyze Resume
+                </button>
+            </form>
+
+            {% if warning %}
+            <p class="text-red-400 font-medium">{{ warning }}</p>
+            {% endif %}
+
+            {% if result %}
+            <div id="result-container" class="bg-[#161b22] border border-gray-800 rounded-2xl p-8 shadow-2xl space-y-8">
+
+                <div class="flex items-center justify-center space-x-6 flex-col sm:flex-row border-b border-gray-700 pb-6 mb-6">
+                    <div class="relative w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-36 h-36 transform -rotate-90" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="54" stroke="#1f2937" stroke-width="10" fill="none"/>
+                            <circle id="progressCircle" cx="60" cy="60" r="54" stroke="currentColor" stroke-width="10" fill="none"
+                                    stroke-linecap="round" class="text-indigo-400 transition-colors duration-500"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="scoreText" class="text-4xl font-extrabold text-indigo-400">0%</span>
+                            <span class="text-sm text-gray-400 mt-1">Match Score</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl sm:text-3xl font-extrabold" id="scoreGrade">Awaiting Score...</h3>
+                        <p class="text-gray-400 text-sm mt-1 max-w-xs">
+                            This score reflects your resume's technical and conceptual match to the job description.
+                        </p>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex flex-wrap border-b border-gray-700 text-gray-400">
+                        <button class="tab-button py-2 px-4 text-sm font-medium border-b-2 transition-colors duration-200 focus:outline-none border-blue-500 text-blue-400" data-tab="context">
+                            Contextual Fit
+                        </button>
+                        <button class="tab-button py-2 px-4 text-sm font-medium border-b-2 border-transparent hover:border-gray-500 transition-colors duration-200 focus:outline-none" data-tab="keyword">
+                            Keyword Density
+                        </button>
+                        <button class="tab-button py-2 px-4 text-sm font-medium border-b-2 border-transparent hover:border-gray-500 transition-colors duration-200 focus:outline-none" data-tab="clarity">
+                            Clarity & Typos
+                        </button>
+                    </div>
+
+                    <div class="pt-4 space-y-4">
+                        <div id="context" class="tab-content text-gray-300"></div>
+                        <div id="keyword" class="tab-content hidden text-gray-300"></div>
+                        <div id="clarity" class="tab-content hidden text-gray-300"></div>
+
+                        <div class="bg-[#0d1117] border border-indigo-700/40 rounded-xl p-4 text-gray-300 text-sm shadow-inner" id="final-action-tip">
+                            </div>
+                    </div>
+                </div>
+
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function updateFileName(input, id) {
+    if(input.files && input.files[0]){
+        document.getElementById(id).innerText = input.files[0].name;
+    }
+}
+
+{% if result %}
+document.addEventListener("DOMContentLoaded", function() {
+    const score = {{ result.ats_score }};
+    const suggestions = {{ result.suggestions | tojson }};
+
+    // --- Dynamic UI Functions ---
+
+    function getScoreColor(s) {
+        if (s >= 70) return { color: "#34d399", class: "text-green-400", grade: "EXCELLENT FIT" }; // Green
+        if (s >= 50) return { color: "#fcd34d", class: "text-yellow-400", grade: "MODERATE FIT" }; // Yellow
+        return { color: "#f87171", class: "text-red-400", grade: "POOR FIT" }; // Red
+    }
+
+    function animateScore(s) {
+        const circle = document.getElementById("progressCircle");
+        const scoreText = document.getElementById("scoreText");
+        const { color, grade } = getScoreColor(s);
+
+        // Update colors and grade
+        circle.style.color = color;
+        scoreText.className = `text-4xl font-extrabold ${getScoreColor(s).class}`;
+        document.getElementById('scoreGrade').innerText = grade;
+        document.getElementById('scoreGrade').className = `text-3xl font-extrabold ${getScoreColor(s).class}`;
+
+        const radius = 54;
+        const circumference = 2 * Math.PI * radius;
+        circle.style.strokeDasharray = circumference;
+        let offset = circumference;
+        circle.style.strokeDashoffset = offset;
+
+        let current = 0;
+        const duration = 1200;
+        const steps = duration / 10;
+        const increment = s / steps;
+        const offsetStep = circumference / 100 * increment;
+
+        const interval = setInterval(() => {
+            current += increment;
+            offset -= offsetStep;
+            if (current >= s) {
+                current = s;
+                offset = circumference - (circumference * s / 100);
+                clearInterval(interval);
+            }
+            circle.style.strokeDashoffset = offset;
+            scoreText.innerText = Math.round(current) + "%";
+        }, 10);
+    }
+
+    // --- Suggestion Parsing and Display (FIXED DOUBLE BULLETS AND ASTERISKS) ---
+    
+    // Function to convert raw markdown text into readable HTML points
+    function parseSuggestionText(text) {
+        if (!text) return '<p class="text-gray-500">No specific feedback provided for this section.</p>';
+
+        // 1. Split into individual lines/points
+        const lines = text.split(/[\r\n]+/).filter(line => line.trim() !== '');
+
+        // 2. Create an unbulleted list and apply custom list styling
+        let html = '<ul class="list-none space-y-2 text-base">'; 
+        
+        lines.forEach(line => {
+             line = line.trim();
+
+             // 3. Remove all remaining unwanted symbols (Markdown bullets, dashes, and asterisks)
+             if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
+                // IMPORTANT: Use substring(1).trim() to remove the bullet AND the space that follows it.
+                line = line.substring(1).trim(); 
+             }
+             
+             // 4. Remove all remaining asterisks used for bolding before applying HTML bolding
+             line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+             line = line.replace(/\*/g, ''); // Remove any remaining single asterisks
+
+             // Apply consistent, custom-colored blue bullet point (Only ONE bullet now)
+             html += `<li class="pl-2 flex items-start"><span class="mr-2 text-blue-400 font-bold">•</span> ${line}</li>`;
+        });
+        html += '</ul>';
+        return html;
+    }
+    
+    function displaySuggestions(sugs) {
+        const categories = {context: [], keyword: [], clarity: []};
+        let currentCategory = null;
+        let finalTip = "";
+        let inContent = false;
+
+        const categoryMap = {
+            '--- Contextual Fit ---': 'context',
+            '--- Keyword Density ---': 'keyword',
+            '--- Clarity & Typos ---': 'clarity'
+        };
+
+        sugs.forEach(line => {
+            line = line.trim();
+
+            if (categoryMap[line]) {
+                currentCategory = categoryMap[line];
+                inContent = true;
+            } else if (line.startsWith("🚨") || line.startsWith("✅")) {
+                // Capture the final action tip
+                finalTip += line + ' ';
+                inContent = false;
+            } else if (currentCategory && inContent && line && !line.startsWith("🎉")) {
+                // Collect lines for the current category
+                categories[currentCategory].push(line);
+            }
+        });
+
+        // Populate Tab Content
+        document.getElementById('context').innerHTML = parseSuggestionText(categories['context'].join('\n'));
+        document.getElementById('keyword').innerHTML = parseSuggestionText(categories['keyword'].join('\n'));
+        document.getElementById('clarity').innerHTML = parseSuggestionText(categories['clarity'].join('\n'));
+        
+        // Populate Final Action Tip
+        if (finalTip) {
+            // Apply bolding to final tip content
+            let cleanedTip = finalTip.trim().replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*/g, '');
+            document.getElementById('final-action-tip').innerHTML = cleanedTip;
+            
+            // Change tip box border color based on urgency
+            if (finalTip.startsWith("🚨")) {
+                document.getElementById('final-action-tip').classList.remove('border-indigo-700/40');
+                document.getElementById('final-action-tip').classList.add('border-red-600');
+            } else {
+                document.getElementById('final-action-tip').classList.remove('border-red-600');
+                document.getElementById('final-action-tip').classList.add('border-green-600/50');
+            }
+        }
+    }
+
+
+    // --- Tab Switching Logic ---
+
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    function openTab(tabName) {
+        tabContents.forEach(content => {
+            content.classList.add('hidden');
+        });
+        tabButtons.forEach(button => {
+            button.classList.remove('border-blue-500', 'text-blue-400');
+            button.classList.add('border-transparent', 'text-gray-400');
+        });
+
+        document.getElementById(tabName).classList.remove('hidden');
+        document.querySelector(`.tab-button[data-tab="${tabName}"]`).classList.add('border-blue-500', 'text-blue-400');
+        document.querySelector(`.tab-button[data-tab="${tabName}"]`).classList.remove('border-transparent', 'text-gray-400');
+    }
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            openTab(button.getAttribute('data-tab'));
+        });
+    });
+
+    // --- Initialization Calls ---
+    animateScore(score);
+    displaySuggestions(suggestions);
+    openTab('context'); // Open the first tab by default
+});
+{% endif %}
+</script>
+
+{% endblock %}

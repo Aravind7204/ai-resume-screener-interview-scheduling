@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- NEW: Style for the scroll animations -->
+<style>
+    .scroll-animate {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+    .scroll-animate.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+
+<!-- Section 1: Hero with Interactive Demo -->
+<section class="py-20 md:py-16">
+    <div class="container mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
+        <!-- Left Side: Headline and CTA -->
+        <div class="text-left">
+            <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
+                    AI-Powered Placement Suite
+                </span>
+            </h1>
+            <p class="text-lg text-gray-300 mb-8 max-w-lg">
+                Our AI-powered suite analyzes resumes, identifies top talent, and streamlines your entire placement workflow, saving you time and improving hiring accuracy.
+            </p>
+            <div class="flex space-x-4">
+                <a href="{{ url_for('dashboard') }}" class="px-8 py-3 text-lg font-semibold rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105">
+                    Get Started Now
+                </a>
+            </div>
+        </div>
+        
+        <!-- Right Side: The Interactive "Aha!" Demo -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border border-gray-700 min-h-[350px]">
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                <div class="w-full sm:w-1/2">
+                    <h4 class="text-sm font-semibold text-gray-400 mb-2">RESUME</h4>
+                    <pre id="demo-resume" class="bg-[#0d1117] p-3 rounded-lg text-xs text-gray-300 h-24 overflow-hidden font-mono"></pre>
+                </div>
+                <div class="w-full sm:w-1/2">
+                    <h4 class="text-sm font-semibold text-gray-400 mb-2">JOB DESCRIPTION</h4>
+                    <pre id="demo-jd" class="bg-[#0d1117] p-3 rounded-lg text-xs text-gray-300 h-24 overflow-hidden font-mono"></pre>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <div id="progress-container" class="w-full bg-gray-700 rounded-full h-2.5 mb-4 opacity-0 transition-opacity duration-500">
+                    <div id="progress-bar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <div id="result-container" class="opacity-0 transition-opacity duration-500">
+                    <p class="text-gray-400 text-sm">MATCH SCORE</p>
+                    <p id="score-text" class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">0%</p>
+                    <a href="{{ url_for('analyzer') }}" class="mt-4 inline-block text-blue-400 hover:underline">Try with your own resume →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<!-- Main content container with consistent spacing -->
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-24 md:space-y-32">
+
+    <!-- Section 2: Features (Your Original Layout) -->
+    <section id="features" class="scroll-animate"> 
+        <h2 class="text-4xl font-bold text-center text-gray-200 mb-16">The Full Placement Suite</h2>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            
+            <!-- Card 1: Precision Resume Analyzer -->
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700 hover:border-blue-500 transition-all transform hover:-translate-y-2">
+                <div class="text-blue-400 mb-4 text-4xl flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375H12a2.25 2.25 0 01-2.25-2.25V6.75A3.375 3.375 0 006.375 3.375H7.5a1.125 1.125 0 011.125 1.125v1.5a2.25 2.25 0 002.25 2.25h2.875a.75.75 0 01.75.75v3.625m-16.875 0h16.875" />
+                    </svg>
+                </div>
+                <h5 class="text-2xl font-semibold text-blue-400 mb-3 text-center">Precision Resume Analyzer</h5>
+                <p class="text-gray-400 mb-6 text-justify">For Candidates: Get an instant, in-depth **ATS score** and **semantic fit analysis** for your resume against any job description. Receive **AI-powered, point-wise feedback** on missing keywords, skill gaps, and content optimization to significantly improve your chances of passing initial screenings. Tailor your application with confidence.</p>
+                <a href="{{ url_for('analyzer') }}" class="text-sm font-medium text-blue-400 hover:text-blue-300 text-center block">Start Optimizing Your Resume →</a>
+            </div>
+
+            <!-- Card 2: Bulk Resumes Shortlister -->
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700 hover:border-green-500 transition-all transform hover:-translate-y-2">
+                <div class="text-green-400 mb-4 text-4xl flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 0a2.25 2.25 0 000 4.5h16.5a2.25 2.25 0 000-4.5m-16.5 0a2.25 2.25 0 010-4.5h16.5a2.25 2.25 0 010 4.5m-15.75 9H5.625c.545 0 1.05-.213 1.423-.586l.879-.879.879-.879A3.375 3.375 0 0011.25 18h2.25M3.75 12l-.109 4.298m-1.275-8.604l-.109 4.305m22.109-4.305v4.305m-1.275-8.604l-.109 4.305M19.5 12h-1.5" />
+                    </svg>
+                </div>
+                <h5 class="text-2xl font-semibold text-green-400 mb-3 text-center">Bulk Resumes Shortlister</h5>
+                <p class="text-gray-400 mb-6 text-justify">For HR Professionals: Upload **hundreds of resumes** against a single job description and instantly receive an **AI-ranked shortlist**. Eliminate manual screening, reduce unconscious bias, and identify the most promising candidates efficiently. Focus your efforts on truly qualified talent.</p>
+                <a href="{{ url_for('ats') }}" class="text-sm font-medium text-green-400 hover:text-green-300 text-center block">Generate Your Shortlist →</a>
+            </div>
+
+            <!-- Card 3: Interactive Interview Dashboard -->
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-2">
+                <div class="text-yellow-400 mb-4 text-4xl flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12v-.008zM12 18h.008v.008H12v-.008z" />
+                    </svg>
+                </div>
+                <h5 class="text-2xl font-semibold text-yellow-400 mb-3 text-center">Interactive Interview Dashboard</h5>
+                <p class="text-gray-400 mb-6 text-justify">For Both: Centralize your entire interview pipeline. HR can **schedule interviews**, track applicant statuses, and provide **AI-assisted live feedback**. Candidates receive personalized invitations, track progress, and view comprehensive feedback post-interview. Full transparency and efficiency in one place.</p>
+                <a href="{{ url_for('dashboard') }}" class="text-sm font-medium text-yellow-400 hover:text-yellow-300 text-center block">Manage Your Interviews →</a>
+            </div>
+
+        </div>
+    </section>
+    
+    <hr class="border-gray-700 my-10"/>
+
+    <!-- Section 3: How It Works - Workflow -->
+    <section id="how-it-works" class="scroll-animate py-20 bg-gray-900">
+        <h2 class="text-4xl font-bold text-center text-gray-200 mb-16">How It Works: Your Seamless Placement Journey</h2>
+        
+        <div class="relative flex flex-col items-center">
+            <!-- Vertical Line -->
+            <div class="absolute w-0.5 h-full bg-gray-700 left-1/2 transform -translate-x-1/2 hidden md:block"></div>
+
+            <!-- Step Items -->
+            
+            <!-- Step 1: HR Schedules Interview & Posts JD -->
+            <div class="flex flex-col md:flex-row items-center w-full max-w-4xl my-8 md:my-12 scroll-animate">
+                <div class="md:w-3/5 md:pr-12 text-left space-y-3">
+                    <span class="text-blue-400 text-lg font-bold">Step 1: For HR</span>
+                    <h3 class="text-3xl font-bold text-gray-200">Set Up Your Interview &amp; Job Description</h3>
+                    <p class="text-gray-400 text-lg">HR professionals easily schedule new interviews within the dashboard. Provide a detailed job description, and our system prepares for incoming applications, ensuring all criteria are set from the start.</p>
+                    <div class="mt-4 flex justify-start md:justify-end">
+                        <a href="{{ url_for('schedule_interview') }}" class="inline-block bg-blue-600 text-white py-2 px-5 rounded-lg hover:bg-blue-500 transition shadow-lg text-sm w-full sm:w-auto">Schedule Interview →</a>
+                    </div>
+                </div>
+                <div class="md:w-2/5 flex justify-center items-center relative py-6 md:py-0">
+                    <div class="absolute left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold border-4 border-gray-900 z-10">1</div>
+                    <div class="hidden md:block w-full h-px bg-gray-700 absolute"></div>
+                </div>
+                <div class="md:w-1/2 md:pl-12 text-center md:text-left hidden md:block">
+                    <div class="flex items-center justify-center min-h-[100px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-blue-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12v-.008zM12 18h.008v.008H12v-.008z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Candidates Apply & Get Instant Feedback -->
+            <div class="flex flex-col md:flex-row items-center w-full max-w-4xl my-8 md:my-12 scroll-animate">
+                <div class="md:w-3/5 md:pr-12 text-left space-y-3">
+                    <span class="text-purple-400 text-lg font-bold">Step 2: For Candidates</span>
+                    <h3 class="text-3xl font-bold text-gray-200">Apply with Confidence &amp; Get AI Insights</h3>
+                    <p class="text-gray-400 text-lg">Candidates can browse open interviews and upload their resumes. Our AI Resume Analyzer provides immediate, personalized feedback, suggesting improvements to align their resume perfectly with the job description before official submission.</p>
+                    <div class="mt-4 flex justify-start md:justify-end">
+                        <a href="{{ url_for('analyzer') }}" class="inline-block bg-purple-600 text-white py-2 px-5 rounded-lg hover:bg-purple-500 transition shadow-lg text-sm w-full sm:w-auto">Analyze Your Resume →</a>
+                    </div>
+                </div>
+                <div class="md:w-2/5 flex justify-center items-center relative py-6 md:py-0">
+                    <div class="absolute left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white text-xl font-bold border-4 border-gray-900 z-10">2</div>
+                    <div class="hidden md:block w-full h-px bg-gray-700 absolute"></div>
+                </div>
+                <div class="md:w-1/2 md:pl-12 text-center md:text-left hidden md:block">
+                     <div class="flex items-center justify-center min-h-[100px]">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-purple-400">
+                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375H12a2.25 2.25 0 01-2.25-2.25V6.75A3.375 3.375 0 006.375 3.375H7.5a1.125 1.125 0 011.125 1.125v1.5a2.25 2.25 0 002.25 2.25h2.875a.75.75 0 01.75.75v3.625m-16.875 0h16.875" />
+                         </svg>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Step 3: HR Shortlists & Manages -->
+            <div class="flex flex-col md:flex-row items-center w-full max-w-4xl my-8 md:my-12 scroll-animate">
+                <div class="md:w-3/5 md:pr-12 text-left space-y-3">
+                    <span class="text-green-400 text-lg font-bold">Step 3: For HR</span>
+                    <h3 class="text-3xl font-bold text-gray-200">Effortless Shortlisting &amp; Application Management</h3>
+                    <p class="text-gray-400 text-lg">Once applications are submitted, HR uses the Bulk Resume Shortlister to automatically rank candidates based on their ATS compatibility and semantic fit with the JD. Manage all applications and quickly move top talent to the next stage.</p>
+                    <div class="mt-4 flex justify-start md:justify-end">
+                        <a href="{{ url_for('ats') }}" class="inline-block bg-green-600 text-white py-2 px-5 rounded-lg hover:bg-green-500 transition shadow-lg text-sm w-full sm:w-auto">Shortlist Candidates →</a>
+                    </div>
+                </div>
+                <div class="md:w-2/5 flex justify-center items-center relative py-6 md:py-0">
+                    <div class="absolute left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white text-xl font-bold border-4 border-gray-900 z-10">3</div>
+                    <div class="hidden md:block w-full h-px bg-gray-700 absolute"></div>
+                </div>
+                <div class="md:w-1/2 md:pl-12 text-center md:text-left hidden md:block">
+                    <div class="flex items-center justify-center min-h-[100px]">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-green-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 0a2.25 2.25 0 000 4.5h16.5a2.25 2.25 0 000-4.5m-16.5 0a2.25 2.25 0 010-4.5h16.5a2.25 2.25 0 010 4.5m-15.75 9H5.625c.545 0 1.05-.213 1.423-.586l.879-.879.879-.879A3.375 3.375 0 0011.25 18h2.25M3.75 12l-.109 4.298m-1.275-8.604l-.109 4.305m22.109-4.305v4.305m-1.275-8.604l-.109 4.305M19.5 12h-1.5" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Live Interviews & AI Feedback -->
+            <div class="flex flex-col md:flex-row items-center w-full max-w-4xl my-8 md:my-12 scroll-animate">
+                <div class="md:w-3/5 md:pr-12 text-left space-y-3">
+                    <span class="text-yellow-400 text-lg font-bold">Step 4: For HR</span>
+                    <h3 class="text-3xl font-bold text-gray-200">Conduct Live Interviews &amp; Provide AI-Assisted Feedback</h3>
+                    <p class="text-gray-400 text-lg">Engage with candidates in live interviews directly through the platform. HR can record structured feedback using predefined categories and custom notes, which the AI then uses to generate a comprehensive score and tailored rejection feedback (if applicable).</p>
+                    <div class="mt-4 flex justify-start md:justify-end">
+                        <a href="{{ url_for('hr_dashboard') }}" class="inline-block bg-yellow-600 text-white py-2 px-5 rounded-lg hover:bg-yellow-500 transition shadow-lg text-sm w-full sm:w-auto">Go to HR Dashboard →</a>
+                    </div>
+                </div>
+                <div class="md:w-2/5 flex justify-center items-center relative py-6 md:py-0">
+                    <div class="absolute left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full bg-yellow-600 flex items-center justify-center text-white text-xl font-bold border-4 border-gray-900 z-10">4</div>
+                    <div class="hidden md:block w-full h-px bg-gray-700 absolute"></div>
+                </div>
+                <div class="md:w-1/2 md:pl-12 text-center md:text-left hidden md:block">
+                     <div class="flex items-center justify-center min-h-[100px]">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-yellow-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0H4.501z" />
+                        </svg>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Candidate Receives Feedback & Next Steps -->
+            <div class="flex flex-col md:flex-row items-center w-full max-w-4xl my-8 md:my-12 scroll-animate">
+                <div class="md:w-3/5 md:pr-12 text-left space-y-3">
+                    <span class="text-indigo-400 text-lg font-bold">Step 5: For Candidates</span>
+                    <h3 class="text-3xl font-bold text-gray-200">View Feedback &amp; Track Progress</h3>
+                    <p class="text-gray-400 text-lg">Candidates receive transparent feedback on their interview performance, including scores and constructive areas for development. They can track the status of their applications and prepare for future opportunities with actionable insights.</p>
+                    <div class="mt-4 flex justify-start md:justify-end">
+                        <a href="{{ url_for('candidate_dashboard') }}" class="inline-block bg-indigo-600 text-white py-2 px-5 rounded-lg hover:bg-indigo-500 transition shadow-lg text-sm w-full sm:w-auto">View Your Dashboard →</a>
+                    </div>
+                </div>
+                <div class="md:w-2/5 flex justify-center items-center relative py-6 md:py-0">
+                    <div class="absolute left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xl font-bold border-4 border-gray-900 z-10">5</div>
+                    <div class="hidden md:block w-full h-px bg-gray-700 absolute"></div>
+                </div>
+                <div class="md:w-1/2 md:pl-12 text-center md:text-left hidden md:block">
+                    <div class="flex items-center justify-center min-h-[100px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-indigo-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0018 4.5H6.75A2.25 2.25 0 004.5 6.75v11.25M12 10.5v11.25m-4.5 0H9M12 10.5H9m4.5 11.25H15M12 10.5V15m7.5-7.5h-9" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+    
+    <hr class="border-gray-700 my-10"/>
+    
+    <!-- Section 4: Value Proposition / Why Choose Us -->
+    <section id="value-prop" class="scroll-animate py-20 bg-[#0d1117]">
+        <div class="container mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
+            <div class="flex flex-col justify-center space-y-6">
+                <h2 class="text-4xl font-bold text-indigo-400 mb-4">Why Choose AI Resume Screener?</h2>
+                
+                <ul class="space-y-4 text-gray-300 text-lg">
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-3 mt-1 text-2xl">✓</span>
+                        <div>
+                            <strong class="block">Unbiased & Objective Evaluation:</strong> Eliminate human bias from initial screenings with AI-driven analysis, ensuring every candidate is judged purely on merit and relevance to the job.
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-3 mt-1 text-2xl">✓</span>
+                        <div>
+                            <strong class="block">Significant Time & Cost Savings:</strong> Automate resume review and shortlisting, freeing up HR teams to focus on strategic tasks and direct candidate engagement. Reduce time-to-hire by up to 70%.
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-3 mt-1 text-2xl">✓</span>
+                        <div>
+                            <strong class="block">Enhanced Candidate Experience:</strong> Provide transparent feedback to applicants, helping them understand their strengths and areas for improvement, fostering a positive brand image.
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-3 mt-1 text-2xl">✓</span>
+                        <div>
+                            <strong class="block">Data-Driven Hiring Decisions:</strong> Access comprehensive insights into candidate fit, interview performance, and overall talent pool statistics to make informed choices.
+        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl flex items-center justify-center min-h-[300px]">
+                <img src="{{ url_for('static', filename='images/homepageimg1.png') }}" 
+                     alt="Value Proposition Illustration"
+                     class="w-full h-auto object-contain rounded-lg opacity-90">
+            </div>
+        </div>
+    </section>
+   
+    <hr class="border-gray-700 my-10"/>
+    
+    <!-- Section 5: Technologies Used -->
+    <section id="technologies" class="scroll-animate py-20 bg-gray-900">
+        <h2 class="text-4xl font-bold text-center text-gray-200 mb-16">Powered by Cutting-Edge AI</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-center">
+            <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl border border-gray-700">
+                <h3 class="text-2xl font-semibold text-blue-400 mb-3">Google Gemini AI</h3>
+                <p class="text-gray-400">Leveraging advanced large language models for intelligent feedback generation and contextual understanding.</p>
+            </div>
+            <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl border border-gray-700">
+                <h3 class="text-2xl font-semibold text-green-400 mb-3">Sentence Transformers</h3>
+                <p class="text-gray-400">Utilizing state-of-the-art models for semantic similarity matching between resumes and job descriptions.</p>
+            </div>
+            <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl border border-gray-700">
+                <h3 class="text-2xl font-semibold text-purple-400 mb-3">Flask & SQLite</h3>
+                <p class="text-gray-400">A robust and scalable backend for handling data, user authentication, and application logic.</p>
+                </div>
+            <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl border border-gray-700 md:col-span-2 lg:col-span-1">
+                <h3 class="text-2xl font-semibold text-yellow-400 mb-3">Tailwind CSS</h3>
+                <p class="text-gray-400">Modern and responsive design framework for a seamless user experience across all devices.</p>
+            </div>
+            <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl border border-gray-700 md:col-span-2 lg:col-span-1">
+                <h3 class="text-2xl font-semibold text-indigo-400 mb-3">Python Ecosystem</h3>
+                <p class="text-gray-400">Harnessing powerful libraries for PDF parsing, text processing, and machine learning operations.</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Section 6: FAQs -->
+<section class="py-20 bg-gray-800 text-white">
+    <div class="container mx-auto px-4">
+        <h2 class="text-4xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+        <div class="max-w-3xl mx-auto space-y-4">
+            <details class="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                <summary class="cursor-pointer font-semibold text-gray-200 text-lg">How accurate is the AI Resume Screener?</summary>
+                <p class="mt-3 text-gray-300 leading-relaxed">Our AI-powered screener utilizes advanced Gemini models and Sentence Transformers for both ATS compatibility and semantic understanding. While highly accurate, it's designed to assist, not replace, human decision-making. We continuously refine our models for improved precision.</p>
+            </details>
+            <details class="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                <summary class="cursor-pointer font-semibold text-gray-200 text-lg">Can HR upload multiple resumes at once for shortlisting?</summary>
+                <p class="mt-3 text-gray-300 leading-relaxed">Absolutely! Our platform features a Bulk Resume Shortlister, allowing HR professionals to upload hundreds of resumes simultaneously against a single job description. The AI then processes and ranks them, providing an efficient and unbiased shortlist.</p>
+            </details>
+            <details class="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                <summary class="cursor-pointer font-semibold text-gray-200 text-lg">What kind of feedback do candidates receive?</summary>
+                <p class="mt-3 text-gray-300 leading-relaxed">Candidates receive immediate, point-wise, AI-powered feedback on their resume's ATS score and semantic fit. This includes suggestions for missing keywords, identified skill gaps, and general content optimization to help them tailor their application effectively.</p>
+            </details>
+            <details class="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                <summary class="cursor-pointer font-semibold text-gray-200 text-lg">Is the platform secure for sensitive data?</summary>
+                <p class="mt-3 text-gray-300 leading-relaxed">We prioritize data security. While specific security protocols would be detailed in a full deployment, the architecture is built with industry best practices in mind, using robust backend technologies like Flask and SQLite for secure data handling and user authentication.</p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<!-- JavaScript for all animations and interactive elements -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Scroll Animation Logic ---
+    const animatedElements = document.querySelectorAll('.scroll-animate');
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target); // Stop observing once animated
+                }
+            });
+        }, { threshold: 0.1 });
+        animatedElements.forEach(el => observer.observe(el));
+    } else {
+        animatedElements.forEach(el => el.classList.add('is-visible'));
+    }
+
+    // --- Interactive Demo Logic ---
+    const resumeEl = document.getElementById('demo-resume');
+    const jdEl = document.getElementById('demo-jd');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const resultContainer = document.getElementById('result-container');
+    const scoreText = document.getElementById('score-text');
+
+    const resumeText = `EXPERIENCE\n- Python Developer at Tech Solutions\n- Built REST APIs with Django\n- Managed AWS infrastructure`;
+    const jdText = `REQUIREMENTS\n- 3+ years of Python & Django\n- Experience with REST APIs\n- Proficient in cloud services (AWS)`;
+
+    function typewriter(element, text, speed = 30) {
+        return new Promise(resolve => {
+            let i = 0;
+            element.innerHTML = '';
+            element.classList.add('typing-cursor');
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    element.classList.remove('typing-cursor');
+                    resolve();
+                }
+            }
+            type();
+        });
+    }
+
+    function animateScore(targetScore) {
+        let currentScore = 0;
+        const interval = setInterval(() => {
+            currentScore += 1;
+            if (currentScore >= targetScore) {
+                currentScore = targetScore;
+                clearInterval(interval);
+            }
+            scoreText.textContent = `${currentScore}%`;
+        }, 20);
+    }
+
+    async function startDemo() {
+        await typewriter(resumeEl, resumeText);
+        await new Promise(r => setTimeout(r, 300));
+        await typewriter(jdEl, jdText);
+        await new Promise(r => setTimeout(r, 500));
+        
+        progressContainer.style.opacity = '1';
+        progressBar.style.width = '100%';
+        progressBar.style.transition = 'width 2s ease-out';
+
+        setTimeout(() => {
+            resultContainer.style.opacity = '1';
+            animateScore(87);
+        }, 1000);
+    }
+
+    // Delay the demo start slightly for better page load experience
+    setTimeout(startDemo, 1000);
+});
+</script>
+{% endblock %}
+

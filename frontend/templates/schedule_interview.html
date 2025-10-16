@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* Style for the editable div to make it look like a textarea */
+    #email-editor {
+        -moz-appearance: textfield-multiline;
+        -webkit-appearance: textarea;
+        border: 1px solid #4a5568;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        background-color: #0d1117;
+        color: #cbd5e0;
+        min-height: 12rem; /* 192px */
+        width: 100%;
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        cursor: text;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #email-editor:focus {
+        border-color: #4299e1; /* Tailwind's blue-400 */
+        box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.5);
+    }
+    /* Style for invalid email lines */
+    .invalid-email {
+        background-color: rgba(239, 68, 68, 0.15); /* Faint red background */
+        color: #fca5a5; /* Lighter red text */
+        display: inline;
+        border-radius: 3px;
+        padding: 1px 2px;
+        text-decoration: underline wavy red 1px;
+    }
+</style>
+
+<div class="max-w-4xl mx-auto p-4 md:p-10">
+    <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <h1 class="text-3xl font-bold text-blue-400 mb-6">Schedule a New Interview</h1>
+        <form id="schedule-form" action="{{ url_for('schedule_interview') }}" method="POST" class="space-y-6">
+            <div>
+                <label for="title" class="block text-sm font-medium text-gray-300 mb-1">Interview Title</label>
+                <input type="text" name="title" id="title" required class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Senior Python Developer">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="interview_date" class="block text-sm font-medium text-gray-300 mb-1">Interview Date (Required)</label>
+                    <input type="date" name="interview_date" id="interview_date" required class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="interview_time" class="block text-sm font-medium text-gray-300 mb-1">Interview Time (Optional)</label>
+                    <input type="time" name="interview_time" id="interview_time" class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Job Description</label>
+                <textarea name="description" id="description" rows="6" required class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter key responsibilities, required skills, and qualifications..."></textarea>
+            </div>
+
+            <div>
+                <label for="email-editor" class="block text-sm font-medium text-gray-300 mb-1">Invited Candidate Emails (Supports pasting from Excel)</label>
+                <div id="email-editor" contenteditable="true" spellcheck="false" placeholder="Paste one candidate email per line..."></div>
+                <textarea name="candidate_emails" id="hidden-emails" class="hidden" required></textarea>
+                <p id="email-error" class="text-red-400 text-sm mt-2 hidden">Please correct the highlighted invalid emails before proceeding.</p>
+            </div>
+
+            <button type="submit" id="submit-button"
+                    class="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-lg transition hover:scale-105
+                           disabled:bg-gray-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:scale-100">
+                Create Schedule & Invite
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const editor = document.getElementById('email-editor');
+    const hiddenTextarea = document.getElementById('hidden-emails');
+    const submitButton = document.getElementById('submit-button');
+    const emailError = document.getElementById('email-error');
+    const scheduleForm = document.getElementById('schedule-form');
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    let debounceTimer;
+
+    function getCursorOffset(parent) {
+        const selection = window.getSelection();
+        if (selection.rangeCount === 0) return 0;
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(parent);
+        preCaretRange.setEnd(range.startContainer, range.startOffset);
+        return preCaretRange.toString().length;
+    }
+
+    function setCursorOffset(parent, offset) {
+        const walker = document.createTreeWalker(parent, NodeFilter.SHOW_TEXT);
+        let charCount = 0;
+        let node;
+        while (node = walker.nextNode()) {
+            const nodeLength = node.length;
+            if (charCount + nodeLength >= offset) {
+                const range = document.createRange();
+                range.setStart(node, offset - charCount);
+                range.collapse(true);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                return;
+            }
+            charCount += nodeLength;
+        }
+    }
+
+    const validateAndHighlight = () => {
+        const cursorOffset = getCursorOffset(editor);
+        const text = editor.innerText;
+        const lines = text.split('\n');
+        let hasInvalidEmail = false;
+
+        const validatedHtml = lines.map(line => {
+            const trimmedLine = line.trim();
+            if (trimmedLine === '') return '';
+            if (!emailRegex.test(trimmedLine)) {
+                hasInvalidEmail = true;
+                return `<span class="invalid-email">${line}</span>`;
+            }
+            return line;
+        }).join('<br>'); 
+        
+        if (editor.innerHTML !== validatedHtml) {
+             editor.innerHTML = validatedHtml;
+             setCursorOffset(editor, cursorOffset);
+        }
+
+        submitButton.disabled = hasInvalidEmail;
+        emailError.classList.toggle('hidden', !hasInvalidEmail);
+    };
+    
+    // **THE FIX IS HERE**: Listen for the 'paste' event
+    editor.addEventListener('paste', (event) => {
+        // 1. Prevent the default browser paste action
+        event.preventDefault();
+
+        // 2. Get the raw text from the clipboard
+        const pastedText = (event.clipboardData || window.clipboardData).getData('text/plain');
+        
+        // 3. Clean the text: replace tabs with newlines and collapse multiple newlines
+        const cleanedText = pastedText.replace(/\t/g, '\n').replace(/\r/g, '').replace(/\n+/g, '\n');
+
+        // 4. Insert the cleaned text into the editor at the cursor position
+        document.execCommand('insertText', false, cleanedText);
+
+        // 5. Immediately run validation on the newly pasted content
+        validateAndHighlight();
+    });
+
+    editor.addEventListener('input', () => {
+        hiddenTextarea.value = editor.innerText;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(validateAndHighlight, 500);
+    });
+
+    // Handle Enter key to insert <br> and prevent cursor jump
+    editor.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Prevent default Enter behavior
+
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+            const br = document.createElement('br');
+            range.deleteContents(); // Remove any selected content
+            range.insertNode(br); // Insert the <br> tag
+            
+            // Collapse the range to the end of the inserted <br> and set as new selection
+            range.setStartAfter(br);
+            range.setEndAfter(br);
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            // Manually trigger input event for validation and hidden textarea update
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+
+    editor.addEventListener('blur', validateAndHighlight);
+
+    scheduleForm.addEventListener('submit', (event) => {
+        validateAndHighlight();
+        if (submitButton.disabled) {
+            event.preventDefault();
+        }
+    });
+
+    validateAndHighlight();
+});
+</script>
+
+{% endblock %}
+

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Resume Screener</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        /* Your existing styles for navbar links, etc. */
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            width: 0%;
+            height: 2px;
+            bottom: -2px;
+            left: 0;
+            background-color: #6366f1;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        /* ** THE FIX IS HERE: Styles for the new Toast Notifications ** */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast-message {
+            animation: fadeInDown 0.5s ease-out, fadeOut 0.5s ease-in 3.5s forwards;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Navbar -->
+    <nav class="bg-gray-800/90 backdrop-blur-md shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="{{ url_for('home') }}" class="flex items-center space-x-2">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="h-10 w-10 object-contain">
+                <span class="text-2xl font-bold text-gray-300">AI Resume Screener</span>
+            </a>
+            
+            <!-- Mobile menu button -->
+            <button id="mobile-menu-button" class="md:hidden text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-300 rounded-lg p-2">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex items-center space-x-6" id="desktop-menu">
+                <a href="{{ url_for('home') }}" class="nav-link font-medium text-gray-300">Home</a>
+                <a href="{{ url_for('analyzer') }}" class="nav-link font-medium text-gray-300">Resume Analyzer</a>
+                <a href="{{ url_for('ats') }}" class="nav-link font-medium text-gray-300">Resume Shortlister</a>
+                
+                {% if session.user_type %}
+                    <a href="{{ url_for(session.user_type + '_dashboard') }}" class="nav-link font-medium text-gray-300">My Dashboard</a>
+                    <a href="{{ url_for('logout') }}" class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white shadow-md hover:bg-red-500 transition-colors">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('dashboard') }}" class="nav-link font-medium text-gray-300">Login / Register</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Mobile Menu (hidden by default) -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="{{ url_for('home') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700">Home</a>
+                <a href="{{ url_for('analyzer') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700">Resume Analyzer</a>
+                <a href="{{ url_for('ats') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700">Resume Shortlister</a>
+                {% if session.user_type %}
+                    <a href="{{ url_for(session.user_type + '_dashboard') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700">My Dashboard</a>
+                    <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-md text-base font-medium text-red-400 hover:bg-gray-700">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('dashboard') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700">Login / Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (mobileMenuButton) {
+                mobileMenuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
+
+    <!-- ** THE FIX IS HERE: Flash Messages are now outside the main content flow ** -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="toast-container">
+            {% for category, message in messages %}
+            <div class="toast-message p-4 rounded-lg text-white font-medium text-center
+                        {% if category == 'success' %} bg-green-600 border border-green-500
+                        {% elif category == 'error' %} bg-red-600 border border-red-500
+                        {% else %} bg-blue-600 border border-blue-500 {% endif %}"
+                 role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <main class="container mx-auto my-10 px-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 py-12 mt-10">
+        <div class="container mx-auto grid md:grid-cols-3 gap-8">
+            <div>
+                <h3 class="text-xl font-semibold text-gray-200 mb-4">About AI Resume Screener</h3>
+                <p class="text-gray-400 leading-relaxed">
+                    Empowering smarter hiring decisions with AI-driven resume analysis. Upload resumes and job descriptions to get ATS scores, keyword suggestions, and improve your chances of getting shortlisted.
+                </p>
+            </div>
+            <div>
+                <h3 class="text-xl font-semibold text-gray-200 mb-4">Quick Links</h3>
+                <ul class="space-y-2">
+                    <li><a href="{{ url_for('home') }}" class="hover:text-blue-400 transition">Home</a></li>
+                    <li><a href="{{ url_for('analyzer') }}" class="hover:text-blue-400 transition">Resume Analyzer</a></li>
+                    <li><a href="{{ url_for('ats') }}" class="hover:text-blue-400 transition">Resume Shortlister</a></li>
+                    <li><a href="{{ url_for('dashboard') }}" class="hover:text-blue-400 transition">Placement Dashboard</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-xl font-semibold text-gray-200 mb-4">Contact & Follow</h3>
+                <p class="text-gray-400 mb-4">Email: support@airesumescreener.com</p>
+                <div class="flex space-x-4">
+                    <a href="#" class="hover:text-blue-400 transition">Twitter</a>
+                    <a href="#" class="hover:text-blue-400 transition">LinkedIn</a>
+                    <a href="#" class="hover:text-blue-400 transition">GitHub</a>
+                </div>
+            </div>
+        </div>
+        <div class="text-center text-gray-500 mt-8 text-sm">
+            &copy; 2025 <strong>AI Resume Screener</strong> | Made with ❤️ by Your Name
+        </div>
+    </footer>
+
+</body>
+</html>
+

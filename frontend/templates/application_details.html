@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 sm:p-6 md:p-10">
+    <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <h1 class="text-3xl font-bold text-blue-400 mb-6">Application Details</h1>
+
+        {% if interview %}
+        <div class="bg-[#0d1117] border border-gray-700 rounded-lg p-6 mb-6">
+            <h3 class="font-bold text-xl text-gray-200">{{ interview.title }}</h3>
+            <p class="text-sm text-gray-400">Scheduled for: {{ interview.interview_date }}</p>
+            <p class="text-sm text-gray-500 mt-1">Posted by: {{ interview.created_by }}</p>
+            <p class="text-gray-300 mt-4">{{ interview.description }}</p>
+
+            <div class="mt-6 flex items-center space-x-4">
+                {% if interview.results_published %}
+                    {% if application %}
+                        <span class="px-4 py-2 text-sm font-semibold rounded-lg {% if application.status == 'Waiting List' %}bg-yellow-500{% endif %} text-white">Status: {{ application.status }}</span>
+                    {% else %}
+                        <span class="text-gray-500">Application window closed.</span>
+                    {% endif %}
+                {% else %}
+                    {# Results are not published yet #}
+                    {% if application %}
+                        <button class="px-5 py-2 bg-green-600 text-white font-semibold rounded-lg cursor-not-allowed flex items-center space-x-2" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            <span>Applied</span>
+                        </button>
+                        <span class="text-gray-400">Your application has been submitted.</span>
+                    {% else %}
+                        <form action="{{ url_for('apply_for_interview', interview_id=interview.id) }}" method="post" enctype="multipart/form-data" class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full">
+                            <input type="file" name="resume" accept=".pdf,.doc,.docx" class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-500 file:text-white
+                                hover:file:bg-blue-600 cursor-pointer" required>
+                            <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition-colors flex-shrink-0">Apply Now</button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            {% if interview.results_published %}
+                {% if application and application.status == 'Rejected' and application.feedback %}
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <p class="text-sm font-semibold text-gray-300 mb-2">Feedback from the HR team:</p>
+                        <p class="text-sm text-gray-400 italic">"{{ application.feedback }}"</p>
+                    </div>
+                {% elif application and application.status == 'Accepted' %}
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <p class="text-sm font-semibold text-green-300 mb-2">Congratulations!</p>
+                        <p class="text-sm text-gray-400">The team was impressed and has decided to move forward with your application. The HR will contact you shortly with the next steps.</p>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-8">Application details not found.</p>
+        {% endif %}
+
+        <div class="mt-8 text-center">
+            <a href="{{ url_for('candidate_dashboard') }}" class="text-blue-400 hover:underline">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

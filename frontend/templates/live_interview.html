@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- PDF.js Library Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+
+<style>
+    main.container { max-width: 100%; padding: 0; margin: 0; }
+    .cockpit-height { height: auto; min-height: calc(100vh - 70px); }
+    @media (min-width: 1024px) { /* Tailwind's lg breakpoint */
+        .cockpit-height { height: calc(100vh - 70px); }
+    }
+    #resume-viewer::-webkit-scrollbar { width: 8px; }
+    #resume-viewer::-webkit-scrollbar-track { background: #161b22; }
+    #resume-viewer::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+    #resume-viewer::-webkit-scrollbar-thumb:hover { background: #718096; }
+</style>
+
+<div class="flex flex-col lg:flex-row cockpit-height">
+    
+    <!-- Left Side: Resume Viewer -->
+    <div class="w-full lg:w-2/3 flex flex-col bg-gray-900">
+        <!-- Header Bar -->
+        <div class="bg-gray-800 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-700 shadow-md flex-shrink-0 space-y-2 sm:space-y-0">
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold text-gray-200">{{ interview_title }}</h1>
+                <p class="text-xs sm:text-sm text-gray-400">Interviewing: <span class="font-semibold text-blue-400">{{ candidate_username }}</span></p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                 <a href="{{ url_for('interview_details', interview_id=interview_id) }}" class="text-sm text-gray-400 hover:text-white transition w-full sm:w-auto text-center sm:text-left">← Back to Applicant List</a>
+                 <button type="submit" form="decision-form" id="finish-interview-btn" disabled class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed w-full sm:w-auto">
+                    Finish Interview
+                 </button>
+            </div>
+        </div>
+
+        {% if resume_filename.lower().endswith('.pdf') %}
+            <!-- PDF Controls -->
+            <div id="pdf-controls" class="bg-gray-800/50 p-2 flex flex-wrap items-center justify-center space-x-2 sm:space-x-4 border-b border-gray-700 flex-shrink-0">
+                <button id="prev-page" class="px-2 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">Prev</button>
+                <span id="page-num" class="text-xs sm:text-sm">0</span> / <span id="page-count" class="text-xs sm:text-sm">0</span>
+                <button id="next-page" class="px-2 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+                <button id="zoom-out" class="px-2 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 transition">-</button>
+                <span class="text-xs sm:text-sm">Zoom</span>
+                <button id="zoom-in" class="px-2 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 transition">+</button>
+            </div>
+            <!-- PDF Canvas -->
+            <div id="resume-viewer" class="flex-grow overflow-auto p-2 sm:p-4 flex justify-center">
+                 <div id="loader" class="text-gray-400 mt-8">Loading document...</div>
+                <canvas id="pdf-canvas" class="hidden shadow-lg"></canvas>
+            </div>
+        {% else %}
+            <!-- Fallback for non-PDF files -->
+            <div class="flex-grow flex flex-col items-center justify-center text-center p-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-yellow-400">Cannot Preview File</h2>
+                <p class="text-gray-400 mt-2 text-sm sm:text-base">This resume is not a PDF. Please download it to view.</p>
+                <a href="{{ url_for('serve_resume', interview_id=interview_id, filename=resume_filename) }}" target="_blank" class="mt-6 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-500 transition text-sm sm:text-base">
+                    Download {{ resume_filename }}
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Right Side: Action Panel -->
+    <div class="w-full lg:w-1/3 bg-[#161b22] border-t lg:border-t-0 lg:border-l border-gray-700 flex flex-col p-4 sm:p-6 shadow-lg overflow-y-auto">
+        <form id="decision-form" action="{{ url_for('submit_decision', interview_id=interview_id, candidate_username=candidate_username) }}" method="POST" class="flex flex-col h-full">
+            <div class="flex-grow">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-200 mb-4">Interview Feedback & Notes</h2>
+                <div class="mb-6 p-4 bg-gray-800 rounded-lg shadow-inner">
+                    <p class="text-base font-semibold text-gray-300 flex items-center">Current Score: <span class="text-blue-400 ml-2">{{ "%.1f" | format(interview_score) }}%</span>
+                    </p>
+                    <p class="text-xs text-gray-500">This score is calculated based on the feedback provided below.</p>
+                </div>
+                
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">Technical Skills & Competencies:</label>
+                        <div class="space-y-2 p-2 bg-[#0d1117] border border-gray-600 rounded-lg feedback-checkbox-group">
+                            {% set technical_options = [
+                                "Strong grasp of core technologies",
+                                "Excellent problem-solving abilities",
+                                "Proficient in data structures and algorithms",
+                                "Demonstrates innovative technical solutions",
+                                "Lacks in-depth knowledge of key tools",
+                                "Struggles with debugging complex issues",
+                                "Limited experience with required frameworks"
+                            ] %}
+                            {% for option in technical_options %}
+                                <label class="flex items-center space-x-3 cursor-pointer text-gray-300 text-sm">
+                                    <input type="checkbox" name="technical_skills_select" value="{{ option }}" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                                        {% if option in existing_feedback.technical_skills_select %}checked{% endif %}>
+                                    <span>{{ option }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <textarea id="technical_skills_extra" name="technical_skills_extra" rows="2" class="w-full bg-[#0d1117] border border-gray-600 rounded-lg p-2 text-gray-300 focus:ring-blue-500 focus:border-blue-500 mt-2 text-sm" placeholder="Add any additional technical notes..." required>{{ existing_feedback.technical_skills_extra or '' }}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">Behavioral & Soft Skills:</label>
+                        <div class="space-y-2 p-2 bg-[#0d1117] border border-gray-600 rounded-lg feedback-checkbox-group">
+                            {% set behavioral_options = [
+                                "Excellent communication skills",
+                                "Strong team player and collaborator",
+                                "Demonstrates leadership potential",
+                                "Highly adaptable to new situations",
+                                "Struggles with clear communication",
+                                "Prefers working independently",
+                                "Difficulty in handling constructive criticism"
+                            ] %}
+                            {% for option in behavioral_options %}
+                                <label class="flex items-center space-x-3 cursor-pointer text-gray-300 text-sm">
+                                    <input type="checkbox" name="behavioral_skills_select" value="{{ option }}" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                                        {% if option in existing_feedback.behavioral_skills_select %}checked{% endif %}>
+                                    <span>{{ option }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <textarea id="behavioral_skills_extra" name="behavioral_skills_extra" rows="2" class="w-full bg-[#0d1117] border border-gray-600 rounded-lg p-2 text-gray-300 focus:ring-blue-500 focus:border-blue-500 mt-2 text-sm" placeholder="Add any additional behavioral notes..." required>{{ existing_feedback.behavioral_skills_extra or '' }}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">Candidate Strengths:</label>
+                        <div class="space-y-2 p-2 bg-[#0d1117] border border-gray-600 rounded-lg feedback-checkbox-group">
+                            {% set strengths_options = [
+                                "Quick learner and highly motivated",
+                                "Detail-oriented and thorough",
+                                "Positive attitude and enthusiasm",
+                                "Proactive and takes initiative",
+                                "Strong analytical thinking"
+                            ] %}
+                            {% for option in strengths_options %}
+                                <label class="flex items-center space-x-3 cursor-pointer text-gray-300 text-sm">
+                                    <input type="checkbox" name="strengths_select" value="{{ option }}" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                                        {% if option in existing_feedback.strengths_select %}checked{% endif %}>
+                                    <span>{{ option }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <textarea id="strengths_extra" name="strengths_extra" rows="2" class="w-full bg-[#0d1117] border border-gray-600 rounded-lg p-2 text-gray-300 focus:ring-blue-500 focus:border-blue-500 mt-2 text-sm" placeholder="Add any additional notes on strengths..." required>{{ existing_feedback.strengths_extra or '' }}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">Areas for Development:</label>
+                        <div class="space-y-2 p-2 bg-[#0d1117] border border-gray-600 rounded-lg feedback-checkbox-group">
+                            {% set development_options = [
+                                "Needs to develop leadership skills",
+                                "Could improve time management",
+                                "Benefit from deeper domain knowledge",
+                                "Needs to enhance presentation skills",
+                                "Opportunity to be more proactive"
+                            ] %}
+                            {% for option in development_options %}
+                                <label class="flex items-center space-x-3 cursor-pointer text-gray-300 text-sm">
+                                    <input type="checkbox" name="areas_for_development_select" value="{{ option }}" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                                        {% if option in existing_feedback.areas_for_development_select %}checked{% endif %}>
+                                    <span>{{ option }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <textarea id="areas_for_development_extra" name="areas_for_development_extra" rows="2" class="w-full bg-[#0d1117] border border-gray-600 rounded-lg p-2 text-gray-300 focus:ring-blue-500 focus:border-blue-500 mt-2 text-sm" placeholder="Add any additional notes on areas for development..." required>{{ existing_feedback.areas_for_development_extra or '' }}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">General Interview Notes (Overall Impression):</label>
+                        <div class="space-y-2 p-2 bg-[#0d1117] border border-gray-600 rounded-lg feedback-checkbox-group">
+                            {% set general_notes_options = [
+                                "Strong overall impression",
+                                "Good fit for team culture",
+                                "Meets all job requirements",
+                                "Requires further evaluation",
+                                "Not suitable for the role"
+                            ] %}
+                            {% for option in general_notes_options %}
+                                <label class="flex items-center space-x-3 cursor-pointer text-gray-300 text-sm">
+                                    <input type="checkbox" name="general_notes_select" value="{{ option }}" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                                        {% if option in existing_feedback.general_notes_select %}checked{% endif %}>
+                                    <span>{{ option }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <textarea id="general_notes_extra" name="general_notes_extra" rows="2" class="w-full bg-[#0d1117] border border-gray-600 rounded-lg p-2 text-gray-300 focus:ring-blue-500 focus:border-blue-500 mt-2 text-sm" placeholder="Add any other general observations or overall impression..." required>{{ existing_feedback.general_notes_extra or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-shrink-0 space-y-4">
+                <h3 class="text-base sm:text-lg font-semibold text-center text-gray-400 mb-2">Make a Decision</h3>
+                <input type="hidden" name="decision" id="decision-input">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <button type="button" data-decision="rejected" class="decision-btn w-full py-3 bg-gray-700 text-gray-300 font-bold rounded-lg transition border-2 border-transparent hover:border-red-500">Reject</button>
+                    <button type="button" data-decision="waiting_list" class="decision-btn w-full py-3 bg-gray-700 text-gray-300 font-bold rounded-lg transition border-2 border-transparent hover:border-yellow-500">Waiting List</button>
+                    <button type="button" data-decision="accepted" class="decision-btn w-full py-3 bg-gray-700 text-gray-300 font-bold rounded-lg transition border-2 border-transparent hover:border-green-500">Accept</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hidden Modal for Rejection Feedback -->
+<div id="rejection-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-[#161b22] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg p-6 m-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Rejection Feedback</h2>
+        <p class="text-gray-400 mb-6 text-sm">Select the primary reasons for this decision. This will be used to generate professional feedback for the candidate.</p>
+        <div id="rejection-checklist" class="space-y-3"></div>
+        
+        <div class="mt-6 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+            <button type="button" id="cancel-rejection-btn" class="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white font-semibold w-full sm:w-auto">Cancel</button>
+            <button type="button" id="confirm-rejection-btn" class="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold w-full sm:w-auto">Confirm Rejection</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Modal for Waiting List Confirmation -->
+<div id="waiting-list-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-[#161b22] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg p-6 m-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-yellow-400 mb-4">Waiting List Confirmation</h2>
+        <p class="text-gray-400 mb-6 text-sm">You are about to place this candidate on the waiting list. Add any additional notes below.</p>
+        
+        <div class="mt-6 waiting-list-rejection-group">
+            <label for="waiting_list_rejection_reasons" class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">Potential Rejection Reasons*</label>
+            <div id="waiting-list-rejection-checklist" class="space-y-3"></div>
+        </div>
+        <div class="mt-6">
+            <label for="waiting_list_rejection_notes" class="block text-xs sm:text-sm font-medium text-gray-400 mb-1">Additional Rejection Notes (Optional)</label>
+            <textarea id="waiting_list_rejection_notes" rows="3" class="w-full bg-[#0d1117] border border-gray-600 rounded-lg p-2 text-gray-300 text-sm" placeholder="These notes will be used if the candidate is later rejected..."></textarea>
+        </div>
+        <div class="mt-6 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+            <button type="button" id="cancel-waiting-list-btn" class="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white font-semibold w-full sm:w-auto">Cancel</button>
+            <button type="button" id="confirm-waiting-list-btn" class="px-6 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-semibold w-full sm:w-auto">Confirm Waiting List</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // PDF Viewer Logic
+        if (document.getElementById('pdf-canvas')) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+
+            const url = "{{ url_for('serve_resume', interview_id=interview_id, filename=resume_filename) }}";
+            const canvas = document.getElementById('pdf-canvas');
+            const viewer = document.getElementById('resume-viewer');
+            const loader = document.getElementById('loader');
+            const ctx = canvas.getContext('2d');
+            
+            let pdfDoc = null, pageNum = 1, currentScale = 1.0;
+            const pageNumEl = document.getElementById('page-num');
+            const pageCountEl = document.getElementById('page-count');
+            const prevPageBtn = document.getElementById('prev-page');
+            const nextPageBtn = document.getElementById('next-page');
+
+            const renderPage = (num, scale) => {
+                pdfDoc.getPage(num).then(page => {
+                    const dpr = window.devicePixelRatio || 1;
+                    const viewport = page.getViewport({ scale });
+                    canvas.width = Math.floor(viewport.width * dpr);
+                    canvas.height = Math.floor(viewport.height * dpr);
+                    canvas.style.width = Math.floor(viewport.width) + 'px';
+                    canvas.style.height = Math.floor(viewport.height) + 'px';
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                    const renderContext = { canvasContext: ctx, viewport };
+                    page.render(renderContext);
+                    pageNumEl.textContent = num;
+                    updateNavButtons();
+                });
+            };
+
+            const updateNavButtons = () => {
+                prevPageBtn.disabled = (pageNum <= 1);
+                nextPageBtn.disabled = (pageNum >= pdfDoc.numPages);
+            };
+            
+            const changePage = (offset) => {
+                const newPageNum = pageNum + offset;
+                if (newPageNum > 0 && newPageNum <= pdfDoc.numPages) {
+                    pageNum = newPageNum;
+                    renderPage(pageNum, currentScale);
+                }
+            };
+
+            const zoom = (factor) => {
+                currentScale *= factor;
+                renderPage(pageNum, currentScale);
+            };
+
+            prevPageBtn.addEventListener('click', () => changePage(-1));
+            nextPageBtn.addEventListener('click', () => changePage(1));
+            document.getElementById('zoom-in').addEventListener('click', () => zoom(1.2));
+            document.getElementById('zoom-out').addEventListener('click', () => zoom(1 / 1.2));
+            viewer.addEventListener('wheel', (event) => {
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                    if (event.deltaY < 0) { zoom(1.1); } else { zoom(1 / 1.1); }
+                }
+            }, { passive: false });
+
+            pdfjsLib.getDocument(url).promise.then(doc => {
+                pdfDoc = doc;
+                pageCountEl.textContent = doc.numPages;
+                return doc.getPage(1);
+            }).then(page => {
+                const viewerWidth = viewer.clientWidth - 40;
+                const viewport = page.getViewport({ scale: 1.0 });
+                currentScale = viewerWidth / viewport.width;
+                loader.style.display = 'none';
+                canvas.classList.remove('hidden');
+                renderPage(pageNum, currentScale);
+            }).catch(err => {
+                console.error("Error loading PDF:", err);
+                loader.textContent = 'Failed to load PDF.';
+                loader.classList.add('text-red-400');
+            });
+        }
+
+        // Decision Logic
+        const decisionForm = document.getElementById('decision-form');
+        const decisionButtons = document.querySelectorAll('.decision-btn');
+        const decisionInput = document.getElementById('decision-input');
+        const finishButton = document.getElementById('finish-interview-btn');
+        const modal = document.getElementById('rejection-modal');
+        const checklist = document.getElementById('rejection-checklist');
+        const cancelBtn = document.getElementById('cancel-rejection-btn');
+        const confirmBtn = document.getElementById('confirm-rejection-btn');
+        
+        // New elements for waiting list modal
+        const waitingListModal = document.getElementById('waiting-list-modal');
+        const cancelWaitingListBtn = document.getElementById('cancel-waiting-list-btn');
+        const confirmWaitingListBtn = document.getElementById('confirm-waiting-list-btn');
+        const waitingListRejectionNotes = document.getElementById('waiting_list_rejection_notes');
+
+        const rejectionReasons = ["Technical Skills Gap", "Communication Skills", "Cultural Fit", "Experience Mismatch", "Lacks Role-Specific Knowledge", "Problem-Solving Approach"];
+        let selectedDecision = null;
+
+        rejectionReasons.forEach(reason => {
+            const div = document.createElement('div');
+            div.innerHTML = `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" name="rejection_reasons" value="${reason}" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-red-500 focus:ring-red-600"><span class="text-gray-300">${reason}</span></label>`;
+            checklist.appendChild(div);
+        });
+
+        // Populate waiting-list-rejection-checklist
+        const waitingListRejectionChecklist = document.getElementById('waiting-list-rejection-checklist');
+        rejectionReasons.forEach(reason => {
+            const div = document.createElement('div');
+            div.innerHTML = `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" name="waiting_list_rejection_reasons" value="${reason}" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-600"><span class="text-gray-300">${reason}</span></label>`;
+            waitingListRejectionChecklist.appendChild(div);
+        });
+
+        decisionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                selectedDecision = button.dataset.decision;
+                decisionButtons.forEach(btn => {
+                    btn.classList.remove('bg-red-600', 'bg-yellow-500', 'bg-green-600', 'border-white', 'text-white');
+                    btn.classList.add('bg-gray-700', 'text-gray-300');
+                });
+                button.classList.remove('bg-gray-700', 'text-gray-300');
+                button.classList.add('border-white');
+                if (selectedDecision === 'rejected') button.classList.add('bg-red-600', 'text-white');
+                if (selectedDecision === 'waiting_list') button.classList.add('bg-yellow-500', 'text-white');
+                if (selectedDecision === 'accepted') button.classList.add('bg-green-600', 'text-white');
+
+                if (selectedDecision === 'rejected') {
+                    modal.classList.remove('hidden');
+                    finishButton.disabled = true;
+                } else if (selectedDecision === 'waiting_list') {
+                    waitingListModal.classList.remove('hidden');
+                    finishButton.disabled = true; // Disable until confirmed
+                } else {
+                    decisionInput.value = selectedDecision;
+                    finishButton.disabled = false;
+                }
+            });
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            const rejectedBtn = document.querySelector('[data-decision="rejected"]');
+            rejectedBtn.classList.remove('bg-red-600', 'border-white', 'text-white');
+            rejectedBtn.classList.add('bg-gray-700', 'text-gray-300');
+            selectedDecision = null;
+            finishButton.disabled = true;
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            decisionInput.value = 'rejected';
+            decisionForm.querySelectorAll('input[name="rejection_reasons"]').forEach(el => el.remove());
+            const checkedBoxes = checklist.querySelectorAll('input:checked');
+            checkedBoxes.forEach(box => {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'rejection_reasons';
+                hiddenInput.value = box.value;
+                decisionForm.appendChild(hiddenInput);
+            });
+            modal.classList.add('hidden');
+            finishButton.disabled = false;
+        });
+
+        // Validation for feedback checkboxes and textareas
+        const feedbackGroups = document.querySelectorAll('.feedback-checkbox-group');
+        const feedbackTextareas = document.querySelectorAll('.space-y-4 textarea[required]');
+        const waitingListRejectionGroup = document.querySelector('.waiting-list-rejection-group');
+
+        const validateFeedback = () => {
+            let allValid = true;
+
+            // Validate main feedback checkbox groups
+            feedbackGroups.forEach(group => {
+                const checkboxes = group.querySelectorAll('input[type="checkbox"]');
+                const isAnyCheckboxChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
+                if (!isAnyCheckboxChecked) {
+                    allValid = false;
+                }
+            });
+
+            // Validate required textareas
+            feedbackTextareas.forEach(textarea => {
+                if (textarea.value.trim() === '') {
+                    allValid = false;
+                }
+            });
+
+            // Validate waiting list rejection reasons if decision is waiting_list and modal is open
+            if (selectedDecision === 'waiting_list' && waitingListModal.classList.contains('hidden') === false) {
+                const rejectionCheckboxes = waitingListRejectionGroup.querySelectorAll('input[type="checkbox"]');
+                const isAnyRejectionCheckboxChecked = Array.from(rejectionCheckboxes).some(checkbox => checkbox.checked);
+                if (!isAnyRejectionCheckboxChecked) {
+                    allValid = false;
+                }
+            }
+
+            return allValid;
+        };
+
+        const updateFinishButtonState = () => {
+            // The finish button is only enabled if a decision is selected and general feedback is valid.
+            // For modals, the individual confirm buttons handle their own validation and enable finishButton upon confirmation.
+            if (selectedDecision && validateFeedback()) {
+                finishButton.disabled = false;
+            } else {
+                finishButton.disabled = true;
+            }
+        };
+
+        // Add change listeners to all relevant feedback inputs
+        document.querySelectorAll('.space-y-4 input[type="checkbox"], .space-y-4 textarea, .waiting-list-rejection-group input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', updateFinishButtonState);
+            input.addEventListener('input', updateFinishButtonState); // For textareas
+        });
+
+        // Initial check
+        updateFinishButtonState();
+
+        // Waiting List Modal Logic
+        cancelWaitingListBtn.addEventListener('click', () => {
+            waitingListModal.classList.add('hidden');
+            const waitingListBtn = document.querySelector('[data-decision="waiting_list"]');
+            waitingListBtn.classList.remove('bg-yellow-500', 'border-white', 'text-white');
+            waitingListBtn.classList.add('bg-gray-700', 'text-gray-300');
+            selectedDecision = null;
+            finishButton.disabled = true;
+        });
+
+        confirmWaitingListBtn.addEventListener('click', () => {
+            const rejectionCheckboxes = waitingListRejectionGroup.querySelectorAll('input[type="checkbox"]');
+            const isAnyRejectionCheckboxChecked = Array.from(rejectionCheckboxes).some(checkbox => checkbox.checked);
+
+            if (!isAnyRejectionCheckboxChecked) {
+                alert('Please select at least one potential rejection reason.');
+                return;
+            }
+
+            decisionInput.value = 'waiting_list';
+            
+            // Add hidden input for potential rejection reasons
+            const rejectionReasonsInput = document.createElement('input');
+            rejectionReasonsInput.type = 'hidden';
+            rejectionReasonsInput.name = 'waiting_list_rejection_reasons'; // Use a distinct name for rejection reasons
+            const checkedRejectionBoxes = document.getElementById('waiting-list-rejection-checklist').querySelectorAll('input:checked');
+            checkedRejectionBoxes.forEach(box => {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'waiting_list_rejection_reasons';
+                hiddenInput.value = box.value;
+                decisionForm.appendChild(hiddenInput);
+            });
+
+            // Add hidden input for potential rejection notes
+            const rejectionNotesInput = document.createElement('input');
+            rejectionNotesInput.type = 'hidden';
+            rejectionNotesInput.name = 'waiting_list_rejection_notes'; // Use a distinct name for rejection notes
+            rejectionNotesInput.value = waitingListRejectionNotes.value;
+            decisionForm.appendChild(rejectionNotesInput);
+
+            waitingListModal.classList.add('hidden');
+            finishButton.disabled = false;
+        });
+    });
+</script>
+{% endblock %}
+

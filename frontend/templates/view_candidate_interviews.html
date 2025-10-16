@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 md:p-10">
+    <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <h1 class="text-3xl font-bold text-blue-400 mb-6">Your Interview Invitations</h1>
+        {% if interviews %}
+        <div class="space-y-6">
+            {% for interview in interviews %}
+            <div class="bg-[#0d1117] border border-gray-700 rounded-lg p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-xl text-gray-200">{{ interview.title }}</h3>
+                        <p class="text-sm text-gray-400">Scheduled for: {{ interview.interview_date }}</p>
+                        <p class="text-sm text-gray-500 mt-1">Posted by: {{ interview.created_by }}</p>
+                    </div>
+
+                    <!-- ** THE FIX IS HERE: This is the new, dynamic status logic ** -->
+                    {% if interview.application %}
+                        {# The user has applied for this interview #}
+                        {% if interview.results_published %}
+                            {# Results are public, show the final status #}
+                            {% if interview.application.status == 'Accepted' %}
+                                <span class="px-4 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white">Accepted 🎉</span>
+                            {% elif interview.application.status == 'Rejected' %}
+                                <span class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white">Not Selected</span>
+                            {% else %} <!-- Covers Waiting List and other potential statuses -->
+                                <span class="px-4 py-2 text-sm font-semibold rounded-lg bg-yellow-500 text-white">Result Pending</span>
+                            {% endif %}
+                        {% else %}
+                             {# Results are not public yet #}
+                             <a href="{{ url_for('application_details', interview_id=interview.id) }}" class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors whitespace-nowrap">View Application Details</a>
+                        {% endif %}
+                    {% else %}
+                         {# The user has not applied yet #}
+                         <a href="{{ url_for('application_details', interview_id=interview.id) }}" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition-colors whitespace-nowrap">View Application Details</a>
+                    {% endif %}
+                </div>
+                
+                <!-- NEW: Section to show feedback or congratulations message -->
+                {% if interview.results_published and interview.application %}
+                    {% if interview.application.status == 'Rejected' and interview.application.feedback %}
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <p class="text-sm font-semibold text-gray-300 mb-2">Feedback from the HR team:</p>
+                        <p class="text-sm text-gray-400 italic">"{{ interview.application.feedback }}"</p>
+                    </div>
+                    {% elif interview.application.status == 'Accepted' %}
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <p class="text-sm font-semibold text-green-300 mb-2">Congratulations!</p>
+                        <p class="text-sm text-gray-400">The team was impressed and has decided to move forward with your application. The HR will contact you shortly with the next steps.</p>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-8">You have not been invited to any interviews yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

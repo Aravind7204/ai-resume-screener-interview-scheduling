@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-[#0d1117] text-gray-200 p-4 sm:p-6 md:p-10">
+    <div class="max-w-7xl mx-auto space-y-10">
+
+        <header class="text-center space-y-3">
+            <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                Bulk Resume Shortlister
+            </h1>
+            <p class="text-gray-400 text-lg max-w-3xl mx-auto">
+                Upload a job description and multiple candidate resumes to generate an instant, ranked shortlist by ATS score.
+            </p>
+        </header>
+
+        <!-- Upload Form -->
+        <form id="shortlist-form" action="{{ url_for('ats') }}" method="POST" enctype="multipart/form-data"
+              class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 shadow-2xl space-y-6">
+
+            <h2 class="text-2xl font-semibold text-blue-400 mb-4">Batch Upload Details</h2>
+
+            <!-- 1. RESUMES UPLOAD (Primary Action) -->
+            <div class="space-y-4">
+                <label class="block mb-2 text-gray-300 font-bold text-lg">1. Candidate Resumes (Select Multiple Files)</label>
+                <label class="flex items-center cursor-pointer bg-[#0d1117] border border-gray-700 rounded-xl px-4 py-2 hover:border-purple-500 shadow-sm transition w-full">
+                    <button type="button"
+                            class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow transition mr-2 hover:from-blue-500 hover:to-purple-500"
+                            onclick="document.getElementById('resumesInput').click()">
+                        Upload Resumes
+                    </button>
+                    <span id="resumesName" class="text-gray-400 truncate ml-2">No files chosen (Select multiple)</span>
+                    <input type="file" name="resumes" id="resumesInput" accept=".pdf,.txt,.docx" multiple class="hidden" required
+                           onchange="updateMultiFileNames(this, 'resumesName')">
+                </label>
+            </div>
+
+
+            <!-- 2. Job Description INPUT METHOD (JD Text & File) -->
+            <div class="space-y-4 border border-gray-700/50 rounded-xl p-4">
+                <label class="block mb-2 text-gray-300 font-bold text-lg">2. Provide Job Description (JD)</label>
+                
+                <!-- A. Text Area Input -->
+                <textarea name="jobdesc_text" rows="5"
+                          class="w-full bg-[#0d1117] border border-gray-700 rounded-xl p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
+                          placeholder="Paste the job description text here... (Option A: Text)"></textarea>
+
+                <!-- Divider -->
+                <div class="flex items-center justify-center my-3">
+                    <div class="h-px bg-gray-700 w-5/12"></div>
+                    <span class="text-gray-500 text-sm mx-3 font-semibold">OR</span>
+                    <div class="h-px bg-gray-700 w-5/12"></div>
+                </div>
+
+                <!-- B. File Upload Input (COLOR FIXED HERE) -->
+                <label class="flex items-center cursor-pointer bg-[#0d1117] border border-gray-700 rounded-xl px-4 py-2 hover:border-purple-500 shadow-sm transition w-full">
+                    <button type="button"
+                            class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow transition mr-2 hover:from-blue-500 hover:to-purple-500"
+                            onclick="document.getElementById('jdInput').click()">
+                        Upload JD File
+                    </button>
+                    <span id="jdName" class="text-gray-400 truncate ml-2">Upload File (.pdf, .txt, .docx) (Option B: File)</span>
+                    <input type="file" name="job_description" id="jdInput" accept=".pdf,.txt,.docx" class="hidden"
+                           onchange="updateFileName(this, 'jdName')">
+                </label>
+            </div>
+
+            <button type="submit"
+                    class="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg transition"
+                    onclick="showLoading()">
+                Generate Shortlist
+            </button>
+        </form>
+        
+        {% if warning %}
+        <div class="bg-red-900/50 text-red-300 border border-red-700 rounded-xl p-4 font-medium text-center">
+            {{ warning }}
+        </div>
+        {% endif %}
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden text-center bg-[#161b22] border border-gray-800 rounded-2xl p-8">
+            <svg class="animate-spin h-8 w-8 text-purple-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-lg text-purple-400 font-medium">Analyzing resumes... This may take a moment based on the number of files.</p>
+        </div>
+
+        <!-- Results Section -->
+        {% if results %}
+        <div class="space-y-8">
+            <!-- Visual Summary Dashboard -->
+            <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+                <h2 class="text-2xl font-semibold text-purple-400 mb-6">Candidate Pool Summary</h2>
+                <div class="grid md:grid-cols-3 gap-6 items-center">
+                    <!-- Key Stats -->
+                    <div class="space-y-4 text-center md:text-left">
+                        <div>
+                            <p class="text-sm text-gray-400">Top Candidate</p>
+                            <p class="text-2xl font-bold text-green-400">{{ results[0].score }}%</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-400">Average Score</p>
+                            <p id="average-score" class="text-2xl font-bold text-yellow-400">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-400">Total Candidates</p>
+                            <p class="text-2xl font-bold text-blue-400">{{ results|length }}</p>
+                        </div>
+                    </div>
+                    <!-- Score Distribution Chart -->
+                    <div class="md:col-span-2 h-64 max-h-96 w-full mx-auto">
+                        <canvas id="scoreDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+                <h2 class="text-2xl font-semibold text-blue-400 mb-6">Shortlist Results (Ranked)</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-800">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Rank</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">File Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ATS Score</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Semantic Match</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800">
+                            {% for result in results %}
+                            <tr class="hover:bg-gray-800 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium {% if loop.index <= 5 %}text-yellow-400{% else %}text-gray-500{% endif %}">
+                                    #{{ loop.index }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    {{ result.filename }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold 
+                                    {% if result.score >= 70 %}text-green-400{% elif result.score >= 50 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                                    {{ result.score }}%
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                    {{ result.semantic_score|round(1) }}%
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {% if result.score >= 70 %}
+                                    <span class="bg-green-800/50 text-green-400 px-2 inline-flex text-xs leading-5 font-semibold rounded-full">Strong Match</span>
+                                    {% elif result.score >= 50 %}
+                                    <span class="bg-yellow-800/50 text-yellow-400 px-2 inline-flex text-xs leading-5 font-semibold rounded-full">Moderate</span>
+                                    {% else %}
+                                    <span class="bg-red-800/50 text-red-400 px-2 inline-flex text-xs leading-5 font-semibold rounded-full">Poor Fit</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+function updateFileName(input, id) {
+    if(input.files && input.files[0]){
+        document.getElementById(id).innerText = input.files[0].name;
+    }
+}
+
+function updateMultiFileNames(input, id) {
+    if(input.files && input.files.length > 0){
+        document.getElementById(id).innerText = input.files.length + " files selected";
+    } else {
+        document.getElementById(id).innerText = "No files chosen (Select multiple)";
+    }
+}
+
+function showLoading() {
+    const jdFileInput = document.getElementById('jdInput').files.length;
+    const jdTextInput = document.querySelector('textarea[name="jobdesc_text"]').value.trim().length;
+    const resumesInput = document.getElementById('resumesInput').files.length;
+
+    // Check if EITHER file or text input is present for the JD AND resumes are uploaded
+    if ((jdFileInput > 0 || jdTextInput > 0) && resumesInput > 0) {
+        document.getElementById('shortlist-form').classList.add('hidden');
+        document.getElementById('loading').classList.remove('hidden');
+    }
+}
+
+{% if results %}
+document.addEventListener("DOMContentLoaded", function() {
+    const results = {{ results|tojson }};
+    if (!results || results.length === 0) return;
+
+    // --- Calculate Stats ---
+    let totalScore = 0;
+    let poorFit = 0;
+    let moderateFit = 0;
+    let strongFit = 0;
+
+    results.forEach(result => {
+        totalScore += result.score;
+        if (result.score >= 70) strongFit++;
+        else if (result.score >= 50) moderateFit++;
+        else poorFit++;
+    });
+
+    const averageScore = totalScore / results.length;
+    document.getElementById('average-score').innerText = averageScore.toFixed(1) + '%';
+    
+    // --- Render Chart ---
+    const ctx = document.getElementById('scoreDistributionChart').getContext('2d');
+    
+    // Ensure previous chart instance is destroyed if it exists (for HMR/Debug)
+    if (window.scoreChart) {
+        window.scoreChart.destroy();
+    }
+    
+    window.scoreChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Poor Fit (<50%)', 'Moderate Fit (50-69%)', 'Strong Match (70%+)'],
+            datasets: [{
+                label: '# of Candidates',
+                data: [poorFit, moderateFit, strongFit],
+                backgroundColor: [
+                    'rgba(248, 113, 113, 0.5)', // Red (Tailwind 400)
+                    'rgba(252, 211, 77, 0.5)', // Yellow (Tailwind 400)
+                    'rgba(52, 211, 153, 0.5)'  // Green (Tailwind 400)
+                ],
+                borderColor: [
+                    'rgba(248, 113, 113, 1)',
+                    'rgba(252, 211, 77, 1)',
+                    'rgba(52, 211, 153, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Horizontal bar chart
+            responsive: true,
+            maintainAspectRatio: false, // CRITICAL: Allows chart to respect container size
+            layout: {
+                padding: {
+                    right: 15
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Candidate Score Distribution',
+                    color: '#9ca3af',
+                    font: {
+                        size: 16
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.x !== null) {
+                                label += context.parsed.x + ' candidates';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: '#9ca3af'
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.5)' // Gray 700 with opacity
+                    },
+                    title: {
+                        display: true,
+                        text: 'Number of Resumes',
+                        color: '#9ca3af'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: '#9ca3af'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}

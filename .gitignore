@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+.Python/
+build/
+develop-eggs/
+dist/
+egg-info/
+.eggs/
+lib/
+lib64/
+sbin/
+share/
+venv/
+env/
+.env
+.ipynb_checkpoints/
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+thumbs.db
+
+# Project specific
+database.db
+uploads/
+instance/
+*.log
+*.sqlite3

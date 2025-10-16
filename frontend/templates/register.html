@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-[60vh] flex flex-col items-center justify-center bg-gray-900">
+    <div class="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-2xl shadow-2xl p-8">
+        <h2 class="text-3xl font-bold text-center text-gray-200 mb-6">Create New Account</h2>
+
+        <!-- THE FIX IS HERE: Added autocomplete="off" to the form -->
+        <form action="{{ url_for('register') }}" method="POST" class="space-y-6" autocomplete="off">
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-400">Username</label>
+                <!-- Added autocomplete="off" to prevent autofill -->
+                <input type="text" name="username" id="username" required autocomplete="off"
+                       class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-400">Email Address</label>
+                 <!-- Added autocomplete="off" to prevent autofill -->
+                <input type="email" name="email" id="email" required autocomplete="off"
+                       class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-400">Password</label>
+                <!-- THE FIX IS HERE: Using "new-password" tells the browser this is for registration -->
+                <input type="password" name="password" id="password" required autocomplete="new-password"
+                       class="mt-1 block w-full bg-[#0d1117] border border-gray-700 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Real-time Password Validation UI -->
+            <div id="password-requirements" class="space-y-1 text-sm">
+                <p id="length" class="requirement text-red-400 flex items-center">
+                    <span class="indicator mr-2">✗</span>At least 8 characters
+                </p>
+                <p id="capital" class="requirement text-red-400 flex items-center">
+                    <span class="indicator mr-2">✗</span>At least one uppercase letter
+                </p>
+                <p id="number" class="requirement text-red-400 flex items-center">
+                    <span class="indicator mr-2">✗</span>At least one number
+                </p>
+                <p id="special" class="requirement text-red-400 flex items-center">
+                    <span class="indicator mr-2">✗</span>At least one special character (!@#$...)
+                </p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-2">Register as:</label>
+                <div class="flex items-center space-x-6 bg-[#0d1117] border border-gray-700 rounded-lg p-3">
+                    <label for="type_hr" class="flex items-center cursor-pointer">
+                        <input type="radio" id="type_hr" name="user_type" value="hr" class="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" {% if default_role == 'hr' %}checked{% endif %}>
+                        <span class="ml-2 text-gray-300">HR</span>
+                    </label>
+                    <label for="type_candidate" class="flex items-center cursor-pointer">
+                        <input type="radio" id="type_candidate" name="user_type" value="candidate" class="h-4 w-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500" {% if default_role == 'candidate' %}checked{% endif %}>
+                        <span class="ml-2 text-gray-300">Candidate</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit"
+                    class="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-500 hover:to-blue-500 text-white font-semibold rounded-lg shadow-lg transition">
+                Register
+            </button>
+        </form>
+
+        <div class="text-center mt-6">
+            <p class="text-sm text-gray-400">
+                Already have an account?
+                <a href="{{ url_for('dashboard') }}" class="font-medium text-blue-400 hover:text-blue-300">
+                    Login here
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const passwordInput = document.getElementById('password');
+    const requirements = {
+        length: document.getElementById('length'),
+        capital: document.getElementById('capital'),
+        number: document.getElementById('number'),
+        special: document.getElementById('special')
+    };
+
+    passwordInput.addEventListener('input', () => {
+        const password = passwordInput.value;
+        
+        // Helper function to update each requirement's UI
+        const updateRequirement = (element, isValid) => {
+            const indicator = element.querySelector('.indicator');
+            if (isValid) {
+                element.classList.remove('text-red-400');
+                element.classList.add('text-green-400');
+                indicator.textContent = '✓';
+            } else {
+                element.classList.remove('text-green-400');
+                element.classList.add('text-red-400');
+                indicator.textContent = '✗';
+            }
+        };
+
+        // Check each rule against the password
+        updateRequirement(requirements.length, password.length >= 8);
+        updateRequirement(requirements.capital, /[A-Z]/.test(password));
+        updateRequirement(requirements.number, /\d/.test(password));
+        updateRequirement(requirements.special, /[!@#$%^&*()_+-=\[\]{};':"\\|,.<>\/?]/.test(password));
+    });
+});
+</script>
+
+{% endblock %}
+
